@@ -1,0 +1,49 @@
+name: CI
+
+# Run on every push to main and on every pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the jobs only need to read the code.
+permissions:
+  contents: read
+
+# If a new commit arrives on the same branch, cancel the outdated run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, typecheck, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Install dependencies
+        # --locked fails if uv.lock is out of date with pyproject.toml
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src tests
+
+      - name: Test
+        run: uv run pytest
