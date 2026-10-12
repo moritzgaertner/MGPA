@@ -19,6 +19,18 @@ with uv (ruff, mypy, pytest), GitHub Actions CI, architecture diagram.
 - *CI* — every push runs lint, format check, type check and tests on a fresh machine.
   Pin actions to tags that exist: `setup-uv` only publishes exact versions (`v10.3.0`, not `v10`).
 
+**Comprehension questions**
+1. *Why `127.0.0.1:5432` instead of `5432`?* — Binds the port to localhost only. Without it, a VPS
+   exposes the database to the internet, where bots scan for open ports and brute-force passwords.
+   Docker can bypass `ufw`, so the bind address is the reliable protection.
+2. *Committed `pyproject.toml` but not `uv.lock`?* — `uv sync --locked` in CI fails because the lock
+   file no longer matches. Good: it prevents different machines from silently installing different
+   versions ("works on my machine").
+3. *Upload a PDF, then ask about it?* — Upload: frontend → API stores file + `pending` row → Dagster
+   sensor → parse, chunk, embed → chunks in pgvector. Question: frontend → API → agent → Claude calls
+   `search_knowledge` → question embedded → nearest-neighbour search → Claude answers with sources,
+   streamed via SSE, traced in Langfuse. Both flows are decoupled, so the UI shows document status.
+
 **Interview: "Why Postgres + pgvector instead of a dedicated vector database?"**
 For a single-user app the data volume is small, and keeping vectors next to the relational data
 means one system to run, back up and query — I can join chunks with their source documents in

@@ -104,4 +104,6 @@ For every milestone:
 ## Progress
 - [x] M0 Setup — done (CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose,
   backend uv project with ruff/mypy/pytest, GitHub Actions CI, ARCHITECTURE.md, LEARNINGS.md)
-- [ ] M1 Backend — next: concept + plan (FastAPI app, data model, Alembic, /chat with SSE)
+- [ ] M1 Backend — next: concept + plan (FastAPI app, data model, Alembic, /chat with SSE).
+  First code the owner writes themselves: the SQLAlchemy data model. Explain FastAPI, ORM,
+  migrations and async from scratch before starting.
