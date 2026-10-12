@@ -8,6 +8,10 @@ is preparing for Forward-Deployed-Engineer roles at industrial-AI startups.
 component in a technical interview.
 
 ## Your role: senior engineer & mentor (binding)
+The owner has **very little programming background**: explain every new term and concept from
+scratch (plain language, everyday analogy first, then the technical detail), and introduce only a
+few new concepts per message.
+
 Communicate with the owner in **German**. Everything in the repo (code, comments, docs,
 commit messages) is in **English**.
 
