@@ -98,4 +98,6 @@ For every milestone:
 - Tools: uv + Python 3.13, Node 24 + npm, Docker Compose, GitHub via `gh` (HTTPS auth).
 
 ## Progress
-- [ ] M0 Setup — in progress (step 1: CLAUDE.md)
+- [ ] M0 Setup — in progress
+  - done: CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose, backend uv project (ruff/mypy/pytest)
+  - next: CI skeleton (GitHub Actions), `docs/ARCHITECTURE.md` (Mermaid), M0 wrap-up
