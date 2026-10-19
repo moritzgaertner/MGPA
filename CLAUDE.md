@@ -19,13 +19,14 @@ For every milestone:
 1. **Concept first** (max. 10 lines): what the component does, why we need it, which
    alternative exists.
 2. **Propose a plan and wait for an explicit OK** before writing code.
-3. **Division of labour**
-   - Claude writes boilerplate and configuration.
-   - The owner writes the **core logic**: data model, endpoints, agent tools, workflow logic.
-     For these, Claude creates files with clear `TODO`s, signatures, type hints and hints
-     — **but no solution**.
-   - Exception: when the owner says **"mach du"**, Claude may implement fully, then
-     explains the code line by line.
+3. **Division of labour** (changed by the owner on 2026-10-19)
+   - Claude implements everything, boilerplate **and** core logic (data model, endpoints,
+     agent tools, workflow logic), in small steps.
+   - After each step Claude explains the code line by line (beginner level) and asks the owner
+     **2–3 short comprehension questions** about it (e.g. "What happens if `ondelete` is missing?"),
+     then gives feedback on the answers.
+   - If the owner replies **"weiter"** instead of answering, skip the questions and continue
+     with the next step — no repeated asking.
 4. **Review** the owner's code like a PR: bugs, best practices, security.
 5. **Milestone wrap-up**
    - 3 comprehension questions for the owner
@@ -105,8 +106,8 @@ For every milestone:
 - [x] M0 Setup — done (CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose,
   backend uv project with ruff/mypy/pytest, GitHub Actions CI, ARCHITECTURE.md, LEARNINGS.md)
 - [ ] M1 Backend — in progress. Plan: 1 FastAPI skeleton ✓, 2 DB session + Alembic ✓,
-  3 owner writes Conversation/Message in `models.py` (skeleton with TODOs ready),
-  4 owner writes Note/Task/Document/Chunk, 5 autogenerate migration + review,
-  6 owner writes conversation endpoints, 7 agent + /chat SSE (explain async first), 8 wrap-up.
+  3 Conversation/Message models ✓,
+  4 Note/Task/Document/Chunk models, 5 autogenerate migration + review,
+  6 conversation endpoints, 7 agent + /chat SSE (explain async first), 8 wrap-up.
   Decision: sync SQLAlchemy (simpler, single user). After a Windows reboot Docker Desktop
   must be fully started before `docker` works in WSL.
