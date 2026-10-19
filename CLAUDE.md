@@ -104,6 +104,9 @@ For every milestone:
 ## Progress
 - [x] M0 Setup — done (CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose,
   backend uv project with ruff/mypy/pytest, GitHub Actions CI, ARCHITECTURE.md, LEARNINGS.md)
-- [ ] M1 Backend — next: concept + plan (FastAPI app, data model, Alembic, /chat with SSE).
-  First code the owner writes themselves: the SQLAlchemy data model. Explain FastAPI, ORM,
-  migrations and async from scratch before starting.
+- [ ] M1 Backend — in progress. Plan: 1 FastAPI skeleton ✓, 2 DB session + Alembic ✓,
+  3 owner writes Conversation/Message in `models.py` (skeleton with TODOs ready),
+  4 owner writes Note/Task/Document/Chunk, 5 autogenerate migration + review,
+  6 owner writes conversation endpoints, 7 agent + /chat SSE (explain async first), 8 wrap-up.
+  Decision: sync SQLAlchemy (simpler, single user). After a Windows reboot Docker Desktop
+  must be fully started before `docker` works in WSL.

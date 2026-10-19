@@ -5,6 +5,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
+import mgpa_backend.models  # noqa: F401  (import registers all tables on Base.metadata)
 from mgpa_backend.config import get_settings
 from mgpa_backend.db import Base
 
