@@ -8,7 +8,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from mgpa_backend.db import engine
-from mgpa_backend.models import Conversation, Message, MessageRole
+from mgpa_backend.models import (
+    Conversation,
+    Document,
+    DocumentStatus,
+    Message,
+    MessageRole,
+    Task,
+)
 
 
 @pytest.fixture
@@ -62,6 +69,49 @@ def test_deleting_conversation_deletes_its_messages(db: Session) -> None:
 
 def test_message_requires_existing_conversation(db: Session) -> None:
     db.add(Message(conversation_id=999_999, role=MessageRole.USER, content="orphan"))
+
+    with pytest.raises(IntegrityError):
+        db.commit()
+
+
+def test_new_task_is_open(db: Session) -> None:
+    task = Task(title="Send application")
+    db.add(task)
+    db.commit()
+
+    assert task.is_done is False
+    assert task.due_date is None
+
+
+def test_defaults_also_apply_to_rows_inserted_with_plain_sql(db: Session) -> None:
+    # Simulates another process (e.g. Dagster or a manual SQL fix) that bypasses the ORM.
+    db.execute(
+        text(
+            "INSERT INTO documents (filename, media_type, size_bytes, sha256, storage_path) "
+            "VALUES ('cv.pdf', 'application/pdf', 1234, :sha, 'uploads/cv.pdf')"
+        ),
+        {"sha": "a" * 64},
+    )
+    db.execute(text("INSERT INTO tasks (title) VALUES ('Raw SQL task')"))
+
+    document = db.scalars(select(Document)).one()
+    task = db.scalars(select(Task)).one()
+    assert document.status == DocumentStatus.PENDING
+    assert document.created_at is not None
+    assert task.is_done is False
+
+
+def test_same_file_cannot_be_uploaded_twice(db: Session) -> None:
+    for _ in range(2):
+        db.add(
+            Document(
+                filename="cv.pdf",
+                media_type="application/pdf",
+                size_bytes=1234,
+                sha256="b" * 64,
+                storage_path="uploads/cv.pdf",
+            )
+        )
 
     with pytest.raises(IntegrityError):
         db.commit()
