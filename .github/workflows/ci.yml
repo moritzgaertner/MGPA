@@ -22,6 +22,26 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    # Throwaway database for this run, same image as infra/docker-compose.yml.
+    # The credentials only exist inside the CI machine, so they are not secrets.
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18-trixie
+        env:
+          POSTGRES_USER: mgpa
+          POSTGRES_PASSWORD: mgpa
+          POSTGRES_DB: mgpa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mgpa -d mgpa"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://mgpa:mgpa@localhost:5432/mgpa
+
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -45,6 +65,13 @@ jobs:
 
       - name: Type check
         run: uv run mypy src tests
+
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+
+      - name: Check models and migrations are in sync
+        # Fails if a model was changed without generating a migration
+        run: uv run alembic check
 
       - name: Test
         run: uv run pytest

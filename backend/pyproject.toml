@@ -8,8 +8,11 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.20.0",
     "fastapi[standard]>=0.149.0",
+    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16.0",
+    "sqlalchemy>=2.1.5",
 ]
 
 [build-system]
@@ -43,3 +46,22 @@ python_version = "3.13"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.alembic]
+script_location = "%(here)s/migrations"
+# Prefix migration files with the date so they sort chronologically
+file_template = "%%(year)d_%%(month).2d_%%(day).2d-%%(rev)s_%%(slug)s"
+
+# Lint-fix and format every newly generated migration so CI stays green
+[[tool.alembic.post_write_hooks]]
+name = "ruff_fix"
+type = "module"
+module = "ruff"
+options = "check --fix REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_format"
+type = "module"
+module = "ruff"
+options = "format REVISION_SCRIPT_FILENAME"
+
