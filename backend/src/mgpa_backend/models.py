@@ -1,79 +1,60 @@
-"""ORM models: every class here becomes one table in Postgres.
+"""ORM models: every class here becomes one table in Postgres."""
 
-=============================================================================
-HOW A MODEL LOOKS — example from a different domain (authors and books).
-Do NOT copy it 1:1 — transfer the pattern to conversations and messages.
-=============================================================================
+from datetime import datetime
+from enum import StrEnum
 
-    class Author(Base):
-        __tablename__ = "authors"                       # table name in Postgres
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-        id: Mapped[int] = mapped_column(primary_key=True)
-        name: Mapped[str] = mapped_column(String(200))   # NOT NULL (no `| None`)
-        bio: Mapped[str | None] = mapped_column(Text)    # nullable because of `| None`
-        created_at: Mapped[datetime] = mapped_column(
-            DateTime(timezone=True), server_default=func.now()
-        )
-
-        # Python-side shortcut: author.books -> list of Book objects (no extra column!)
-        books: Mapped[list["Book"]] = relationship(
-            back_populates="author", cascade="all, delete-orphan"
-        )
+from mgpa_backend.db import Base
 
 
-    class Book(Base):
-        __tablename__ = "books"
+class MessageRole(StrEnum):
+    """Who wrote a message. Stored as a Postgres enum, so typos are rejected."""
 
-        id: Mapped[int] = mapped_column(primary_key=True)
-        # The real column: which author does this book belong to?
-        author_id: Mapped[int] = mapped_column(
-            ForeignKey("authors.id", ondelete="CASCADE"), index=True
-        )
-        title: Mapped[str] = mapped_column(String(300))
-
-        # The other side of the shortcut: book.author -> Author object
-        author: Mapped["Author"] = relationship(back_populates="books")
-
-Imports you will need (add them at the top, ruff tells you if one is unused):
-    from datetime import datetime
-    from enum import StrEnum
-    from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
-    from sqlalchemy.orm import Mapped, mapped_column, relationship
-    from mgpa_backend.db import Base
-
-Docs: https://docs.sqlalchemy.org/en/21/orm/quickstart.html
-      https://docs.sqlalchemy.org/en/21/orm/basic_relationships.html#one-to-many
-"""
-
-# TODO 1 — MessageRole
-#   A Python enum (class MessageRole(StrEnum)) with the two possible senders of a message:
-#   the user and the assistant. Values are lowercase strings, e.g. "user".
-#   Why an enum instead of a plain string? Think about what happens with a typo like "assitant".
-#   In the column, use: mapped_column(Enum(MessageRole, name="message_role"))
+    USER = "user"
+    ASSISTANT = "assistant"
 
 
-# TODO 2 — Conversation  (table "conversations")
-#   One chat thread. Columns to think about:
-#   - id            primary key
-#   - title         short text, may be empty at first (the title can be generated later)
-#   - created_at    when the conversation started (let the DATABASE set it: server_default)
-#   - updated_at    when the last message arrived — hint: mapped_column(..., onupdate=func.now())
-#   Plus the relationship `messages` (list of Message).
-#   Question for you: if a conversation is deleted, what should happen to its messages?
-#   Hint: should the messages come back ordered? Look up `order_by` on relationship().
+class Conversation(Base):
+    """One chat thread."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Empty at first; a title can be generated from the first message later.
+    title: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Bumped whenever the row is updated; the chat endpoint touches it on every new message.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation",
+        # Deleting a conversation deletes its messages; the database does it (passive_deletes).
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        # Order by id, not created_at: messages saved in one transaction share the same now().
+        order_by="Message.id",
+    )
 
 
-# TODO 3 — Message  (table "messages")
-#   One single message inside a conversation. Columns to think about:
-#   - id                primary key
-#   - conversation_id   foreign key to conversations.id — what should ondelete be?
-#                       index=True: we will often query "all messages of conversation X"
-#   - role              MessageRole (who wrote it)
-#   - content           the message text — can be long, so String(n) or Text?
-#   - created_at        set by the database
-#   Plus the relationship `conversation` back to Conversation.
+class Message(Base):
+    """One message inside a conversation."""
 
+    __tablename__ = "messages"
 
-# CHECK when you are done (from the backend/ folder, with the database running):
-#   uv run ruff check . && uv run ruff format . && uv run mypy src tests
-#   uv run python -c "from mgpa_backend.models import Conversation, Message; print('ok')"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    # values_callable: store the values ("user"), not the member names ("USER")
+    role: Mapped[MessageRole] = mapped_column(
+        Enum(MessageRole, name="message_role", values_callable=lambda e: [m.value for m in e])
+    )
+    # Chat messages can be arbitrarily long, so Text instead of String(n).
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
