@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -15,12 +16,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// Cache for all data loaded from the backend (TanStack Query).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000, // data counts as fresh for 30 s before a background refetch
+      retry: 1,
+    },
+  },
+})
+
 // Entry point: mount the React app into <div id="root"> from index.html.
-// Provider = Chakra UI theme + dark mode for everything inside it.
+// Provider = Chakra UI theme + dark mode; QueryClientProvider = backend data cache.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Provider>
-      <RouterProvider router={router} />
-    </Provider>
+    <QueryClientProvider client={queryClient}>
+      <Provider>
+        <RouterProvider router={router} />
+      </Provider>
+    </QueryClientProvider>
   </StrictMode>,
 )

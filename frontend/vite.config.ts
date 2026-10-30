@@ -14,4 +14,15 @@ export default defineConfig({
     // Use the "@/*" path alias from tsconfig.app.json
     tsconfigPaths: true,
   },
+  server: {
+    // Dev only: forward /api/* to the FastAPI backend and strip the prefix
+    // (/api/conversations -> http://localhost:8000/conversations). Same origin for the
+    // browser, so no CORS setup is needed.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 })

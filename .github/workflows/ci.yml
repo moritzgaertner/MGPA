@@ -79,6 +79,13 @@ jobs:
       - name: Test
         run: uv run pytest
 
+      - name: Check frontend API types are up to date
+        # The frontend's types are generated from this schema. If an endpoint changed without
+        # running `npm run api:types` in frontend/, this diff fails.
+        run: |
+          uv run python -m mgpa_backend.export_openapi > /tmp/openapi.json
+          diff -u ../frontend/src/api/openapi.json /tmp/openapi.json
+
   frontend:
     name: Frontend (lint, typecheck, build)
     runs-on: ubuntu-latest

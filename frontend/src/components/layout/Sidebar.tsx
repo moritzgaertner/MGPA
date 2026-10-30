@@ -4,6 +4,8 @@ import { LuBookOpen, LuListTodo, LuMessageSquare, LuPlus, LuStickyNote } from 'r
 
 import { ColorModeButton } from '@/components/ui/color-mode'
 
+import { ConversationList } from './ConversationList'
+
 // Main sections of the app. `to` is type-checked against the routes in src/routes.
 const NAV_ITEMS: { label: string; to: LinkProps['to']; icon: typeof LuMessageSquare }[] = [
   { label: 'Chat', to: '/chat', icon: LuMessageSquare },
@@ -48,14 +50,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         ))}
       </Stack>
 
-      {/* Conversation list: filled from the backend in step 4. */}
       <Box flex="1" overflowY="auto">
         <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase" px="2" mb="2">
           Conversations
         </Text>
-        <Text fontSize="sm" color="fg.muted" px="2">
-          No conversations yet.
-        </Text>
+        <ConversationList onNavigate={onNavigate} />
       </Box>
 
       <HStack justify="space-between" px="2">
