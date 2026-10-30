@@ -1,7 +1,9 @@
 """Database connection: engine, session factory, declarative base and FastAPI dependency."""
 
 from collections.abc import Iterator
+from typing import Annotated
 
+from fastapi import Depends
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -35,3 +37,7 @@ def get_db() -> Iterator[Session]:
     """FastAPI dependency: one session per request, always closed afterwards."""
     with SessionLocal() as session:
         yield session
+
+
+# Shorthand for endpoint parameters: `db: DbSession` instead of repeating the Depends(...) line.
+DbSession = Annotated[Session, Depends(get_db)]

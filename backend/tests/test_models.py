@@ -1,13 +1,10 @@
-"""Model tests against the real (migrated) Postgres. Each test is rolled back afterwards."""
-
-from collections.abc import Iterator
+"""Model tests against the real (migrated) Postgres. Each test is rolled back (see conftest.py)."""
 
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from mgpa_backend.db import engine
 from mgpa_backend.models import (
     Conversation,
     Document,
@@ -16,19 +13,6 @@ from mgpa_backend.models import (
     MessageRole,
     Task,
 )
-
-
-@pytest.fixture
-def db() -> Iterator[Session]:
-    """A session inside a transaction that is always rolled back, so tests leave no data."""
-    with engine.connect() as connection:
-        transaction = connection.begin()
-        session = Session(bind=connection, join_transaction_mode="create_savepoint")
-        try:
-            yield session
-        finally:
-            session.close()
-            transaction.rollback()
 
 
 def test_conversation_with_messages_roundtrip(db: Session) -> None:
