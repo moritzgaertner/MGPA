@@ -7,8 +7,9 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig([
-  // Build output and generated code are not linted.
-  globalIgnores(['dist', 'src/api/schema.d.ts', 'src/routeTree.gen.ts']),
+  // Build output and generated code are not linted. src/components/ui holds Chakra's
+  // CLI-generated snippets (npx @chakra-ui/cli snippet add), vendored as-is.
+  globalIgnores(['dist', 'src/api/schema.d.ts', 'src/routeTree.gen.ts', 'src/components/ui']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
