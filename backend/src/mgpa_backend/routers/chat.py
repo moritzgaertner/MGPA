@@ -22,6 +22,7 @@ from mgpa_backend.schemas import (
     ChatRequest,
     ChatStartEvent,
 )
+from mgpa_backend.summary import summarize_if_needed
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +56,9 @@ def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
         conversation = found
 
-    # History = everything said so far, WITHOUT the new message (that one is the prompt).
-    history = to_model_history(conversation.messages)
+    # History = messages not yet covered by the summary, WITHOUT the new message (= the prompt).
+    already_summarized = conversation.summarized_until_id or 0
+    history = to_model_history([m for m in conversation.messages if m.id > already_summarized])
 
     # Save the user message right away, so it is not lost if the model call fails.
     conversation.messages.append(Message(role=MessageRole.USER, content=body.message))
@@ -65,7 +67,10 @@ def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
 
     # Pinned notes, oldest first, so their order in the system prompt stays stable.
     pinned = db.scalars(select(Note).where(Note.is_pinned).order_by(Note.id)).all()
-    context = ChatContext(pinned_notes=[PinnedNote(n.title, n.content) for n in pinned])
+    context = ChatContext(
+        pinned_notes=[PinnedNote(n.title, n.content) for n in pinned],
+        summary=conversation.summary,
+    )
 
     return ChatTurn(
         conversation_id=conversation.id, prompt=body.message, history=history, context=context
@@ -118,3 +123,7 @@ async def chat(
         ),
         event="done",
     )
+
+    # After `done`, so the user never waits for it. If the client disconnects first, this is
+    # skipped — harmless, the next turn is still over the threshold and tries again.
+    await summarize_if_needed(db, turn.conversation_id, usage.input_tokens)

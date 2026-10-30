@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # How much the model thinks before answering; "low" keeps chat fast and cheap.
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
+    # Summarize older messages once a chat turn's input exceeds this many tokens.
+    summary_trigger_tokens: int = 8_000
+    # How many of the most recent messages always stay word for word.
+    summary_keep_messages: int = 6
+
 
 @lru_cache
 def get_settings() -> Settings:

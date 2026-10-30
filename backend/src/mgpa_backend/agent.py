@@ -42,6 +42,8 @@ class ChatContext:
     """Per-turn data the agent needs besides the history ("deps" in Pydantic AI terms)."""
 
     pinned_notes: list[PinnedNote] = field(default_factory=list)
+    # Summary of older messages of this conversation that are no longer sent verbatim.
+    summary: str | None = None
 
 
 def render_pinned_notes(notes: Sequence[PinnedNote]) -> str:
@@ -54,6 +56,18 @@ def render_pinned_notes(notes: Sequence[PinnedNote]) -> str:
         "The user pinned these notes. They are always current and take precedence over older "
         "statements in the conversation. Follow them exactly (e.g. plans, numbers, schedules).\n\n"
         f"{sections}"
+    )
+
+
+def render_summary(summary: str | None) -> str:
+    """System-prompt section with the summary of earlier, no longer included messages."""
+    if not summary:
+        return ""
+    return (
+        "## Summary of the earlier conversation\n"
+        "Older messages of this conversation were condensed into this summary. Treat it as "
+        "context you already know; pinned notes take precedence if they disagree.\n\n"
+        f"{summary}"
     )
 
 
@@ -80,6 +94,10 @@ def get_agent() -> Agent[ChatContext, str]:
     @agent.instructions
     def pinned_notes_instructions(ctx: RunContext[ChatContext]) -> str:
         return render_pinned_notes(ctx.deps.pinned_notes)
+
+    @agent.instructions
+    def summary_instructions(ctx: RunContext[ChatContext]) -> str:
+        return render_summary(ctx.deps.summary)
 
     return agent
 

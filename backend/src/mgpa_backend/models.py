@@ -41,6 +41,10 @@ class Conversation(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     # Empty at first; a title can be generated from the first message later.
     title: Mapped[str | None] = mapped_column(String(200))
+    # Running summary of older messages. Claude gets "summary + messages after
+    # summarized_until_id" instead of the full history; all messages stay in the database.
+    summary: Mapped[str | None] = mapped_column(Text)
+    summarized_until_id: Mapped[int | None]
 
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation",
