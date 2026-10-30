@@ -130,3 +130,10 @@ habits; one-off import from the Excel; agent tools `log_training` (write, needs 
 `training_briefing` (read: last weights + gear settings per focus); training in the daily briefing
 (M6); dashboard page in the frontend. Note: the PDF plan says "Schulterdrücken Maschine", the
 CONTEXT.md/bot say "Schulterdrücken Kurzhantel" — ask the owner which is current.
+
+## Planned extension: Telegram channel (after M7 deployment, owner request 2026-10-30)
+Telegram as a second client of the same backend ("channel-agnostic core"): a thin bot container
+on the VPS forwards messages to the MGPA API and maps HITL confirmations to inline buttons
+(✅/❌). No business logic in the bot. Only the owner's Telegram user ID is allowed; bot token
+via env. Needs the backend reachable 24/7, hence after M7. Frontend must be mobile-friendly
+anyway (web UI on the phone as fallback).
