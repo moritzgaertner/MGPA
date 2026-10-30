@@ -101,6 +101,10 @@ For every milestone:
 - Run git, uv, npm and docker **inside WSL** (e.g. `wsl.exe -d Ubuntu-24.04 --cd /home/morit/code/MGPA -- <cmd>`),
   not with Windows binaries against the `\\wsl.localhost` path.
 - Tools: uv + Python 3.13, Node 24 + npm, Docker Compose, GitHub via `gh` (HTTPS auth).
+- Node is installed via **nvm**, which only loads in interactive shells. In `bash -lc` commands run
+  `source ~/.nvm/nvm.sh` first — otherwise the Windows `npm` from `/mnt/c/...` is picked up.
+- Frontend: TypeScript pinned to 6.0.x because typescript-eslint does not support TS 7 yet
+  (re-check when upgrading). Linter is ESLint (owner decision), not the template's oxlint.
 
 ## Progress
 - [x] M0 Setup — done (CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose,
