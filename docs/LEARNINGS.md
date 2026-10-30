@@ -35,3 +35,43 @@ with uv (ruff, mypy, pytest), GitHub Actions CI, architecture diagram.
 For a single-user app the data volume is small, and keeping vectors next to the relational data
 means one system to run, back up and query — I can join chunks with their source documents in
 plain SQL. A dedicated vector DB only pays off at scales or query patterns we do not have.
+
+## M1 — Backend
+
+**Built:** FastAPI app with settings from env, SQLAlchemy models (conversations, messages, notes,
+tasks, documents) with Alembic migrations, CRUD endpoints for conversations, and `POST /chat`
+streaming Claude's answer via Server-Sent Events using a Pydantic AI agent. 26 tests, all against a
+real Postgres; Claude is replaced by a fake model in tests.
+
+**Learned**
+- *ORM* — Python classes map to tables; `Mapped[str | None]` decides nullability.
+- *Primary key / foreign key / relationship* — the FK is the real column and a rule the database
+  enforces; `relationship()` is only a Python shortcut. `ON DELETE CASCADE` lets the database delete
+  children; without it, deleting the parent is refused.
+- *Migrations* — versioned schema changes. Autogenerate is a draft: read it (it stored enum names
+  instead of values and missed `DROP TYPE` in downgrade), test up/down, and `alembic check` in CI.
+- *`now()` is the transaction start time* — rows saved together share it, so order by `id`.
+- *Schemas vs. models* — Pydantic schemas define the public API; models define storage. Internal
+  columns never leak, and the database can change without breaking clients.
+- *HTTP status codes* — 200/201/204 success, 404 not found, 422 invalid input (validated by
+  Pydantic before my code runs). Bound every input (`limit ≤ 100`, title ≤ 200 chars).
+- *Dependency injection* — endpoints receive a DB session via `Depends`; tests swap it for a
+  rolled-back session, and swap Claude for a fake model.
+- *async + SSE* — the server keeps serving while waiting for Claude; SSE streams text pieces over
+  one open HTTP response. The status code is sent first, so anything that can 404 runs before the
+  stream starts. Blocking DB calls inside async code go to a thread pool.
+- *LLMs are stateless* — the full history is sent on every turn, so input tokens (cost) grow with
+  conversation length. Model ID and effort come from env; default `claude-haiku-5-5` for cost.
+
+**Comprehension questions** (asked during the milestone)
+1. *Missing `ondelete="CASCADE"`?* — Postgres refuses to delete a conversation that has messages
+   (foreign key violation).
+2. *Why save the user message before calling Claude?* — If the model call fails or the user closes
+   the tab, the question is not lost; it also guarantees it gets a smaller `id` than the answer.
+3. *Why test with a fake model?* — No API cost, fast, deterministic output, no real key in CI.
+
+**Interview: "How does your chat endpoint stream answers, and what happens if Claude fails?"**
+The endpoint first saves the user message and loads the conversation history — as a dependency, so
+a missing conversation is still a clean 404. Then it streams Claude's answer as Server-Sent Events
+(`start`, `delta`…, `done`) and saves the full answer at the end; if the model call fails, the
+client gets a generic `error` event while the details go to the server log.
