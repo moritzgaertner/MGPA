@@ -1,7 +1,9 @@
 """Application settings, read from environment variables (and the repo-root .env file locally)."""
 
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +13,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 
     database_url: str
+
+    # SecretStr hides the value in logs and error messages (prints as '**********').
+    anthropic_api_key: SecretStr
+    # Never hardcoded: which Claude model the chat agent uses, e.g. "claude-haiku-5-5".
+    anthropic_model: str
+    # How much the model thinks before answering; "low" keeps chat fast and cheap.
+    anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
 
 @lru_cache

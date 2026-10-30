@@ -50,3 +50,39 @@ class ConversationDetail(ConversationRead):
     """A single conversation including all its messages, in order."""
 
     messages: list[MessageRead]
+
+
+class ChatRequest(BaseModel):
+    """Request body for POST /chat. Without conversation_id a new conversation is started."""
+
+    conversation_id: int | None = None
+    message: str = Field(min_length=1, max_length=20_000)
+
+
+# --- Server-Sent Events emitted by POST /chat, in this order ------------------------------------
+
+
+class ChatStartEvent(BaseModel):
+    """event: start — which conversation the answer belongs to (new or existing)."""
+
+    conversation_id: int
+
+
+class ChatDeltaEvent(BaseModel):
+    """event: delta — the next piece of the answer text."""
+
+    text: str
+
+
+class ChatDoneEvent(BaseModel):
+    """event: done — the answer is complete and saved."""
+
+    message_id: int
+    input_tokens: int
+    output_tokens: int
+
+
+class ChatErrorEvent(BaseModel):
+    """event: error — the model call failed; the user message stays saved."""
+
+    detail: str

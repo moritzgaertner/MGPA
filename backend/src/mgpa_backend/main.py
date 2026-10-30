@@ -4,10 +4,11 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from mgpa_backend.db import DbSession
-from mgpa_backend.routers import conversations
+from mgpa_backend.routers import chat, conversations
 
 app = FastAPI(title="MGPA API", version="0.1.0")
 app.include_router(conversations.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")
