@@ -135,6 +135,16 @@ habits; one-off import from the Excel; agent tools `log_training` (write, needs 
 (M6); dashboard page in the frontend. Note: the PDF plan says "Schulterdrücken Maschine", the
 CONTEXT.md/bot say "Schulterdrücken Kurzhantel" — ask the owner which is current.
 
+## Planned extension: M5c Job applications tracker (after M5, owner request 2026-10-30)
+Same "domain module" blueprint as training: table `applications` (company, role, status
+draft → applied → interview → offer / rejected, dates, next step, contact; links to knowledge-base
+documents like CV/cover letter), stats endpoint (counts per status, response rate, upcoming
+deadlines — aggregated in SQL, not in the browser), agent tools (create/update with HITL
+confirmation, read status), `/applications` page with a Kanban board + funnel chart, follow-up
+reminders in the daily briefing (M6). Dashboards: one page per domain, no generic dashboard
+builder. Charts: evaluate Chakra's chart package (Recharts-based, follows dark mode) when the first
+dashboard is built.
+
 ## Planned extension: Telegram channel (after M7 deployment, owner request 2026-10-30)
 Telegram as a second client of the same backend ("channel-agnostic core"): a thin bot container
 on the VPS forwards messages to the MGPA API and maps HITL confirmations to inline buttons

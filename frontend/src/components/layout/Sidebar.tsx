@@ -1,14 +1,15 @@
 import { Box, Button, Flex, HStack, Stack, Text } from '@chakra-ui/react'
+import { Link, type LinkProps } from '@tanstack/react-router'
 import { LuBookOpen, LuListTodo, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
 
 import { ColorModeButton } from '@/components/ui/color-mode'
 
-// Main sections of the app. They become real links once the router is added (step 3).
-const NAV_ITEMS = [
-  { label: 'Chat', icon: LuMessageSquare },
-  { label: 'Notes', icon: LuStickyNote },
-  { label: 'Knowledge', icon: LuBookOpen },
-  { label: 'Tasks', icon: LuListTodo },
+// Main sections of the app. `to` is type-checked against the routes in src/routes.
+const NAV_ITEMS: { label: string; to: LinkProps['to']; icon: typeof LuMessageSquare }[] = [
+  { label: 'Chat', to: '/chat', icon: LuMessageSquare },
+  { label: 'Notes', to: '/notes', icon: LuStickyNote },
+  { label: 'Knowledge', to: '/knowledge', icon: LuBookOpen },
+  { label: 'Tasks', to: '/tasks', icon: LuListTodo },
 ]
 
 type SidebarProps = {
@@ -23,14 +24,26 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         MGPA
       </Text>
 
-      <Button colorPalette="teal" onClick={onNavigate}>
-        <LuPlus /> New chat
+      {/* asChild: render Chakra's button styles on the router's <Link> (a real <a> tag). */}
+      <Button asChild colorPalette="teal">
+        <Link to="/chat" onClick={onNavigate}>
+          <LuPlus /> New chat
+        </Link>
       </Button>
 
-      <Stack gap="1">
-        {NAV_ITEMS.map(({ label, icon: Icon }) => (
-          <Button key={label} variant="ghost" justifyContent="flex-start" onClick={onNavigate}>
-            <Icon /> {label}
+      <Stack as="nav" gap="1">
+        {NAV_ITEMS.map(({ label, to, icon: Icon }) => (
+          <Button
+            key={label}
+            asChild
+            variant="ghost"
+            justifyContent="flex-start"
+            // The router marks the link of the open page with aria-current="page".
+            _currentPage={{ bg: 'bg.emphasized', fontWeight: 'semibold' }}
+          >
+            <Link to={to} onClick={onNavigate}>
+              <Icon /> {label}
+            </Link>
           </Button>
         ))}
       </Stack>

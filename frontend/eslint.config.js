@@ -23,4 +23,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Route files export `Route` next to their page component. The router plugin's
+    // autoCodeSplitting moves each page component into its own module, which keeps hot
+    // reload working — so this rule does not apply here.
+    files: ['src/routes/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
