@@ -80,6 +80,9 @@ class Note(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
     content: Mapped[str] = mapped_column(Text)
+    # Pinned notes (e.g. a training plan) go into the system prompt of EVERY chat turn,
+    # word for word — they are never summarized away. They cost input tokens on every turn.
+    is_pinned: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class Task(TimestampMixin, Base):

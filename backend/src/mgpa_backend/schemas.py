@@ -5,10 +5,14 @@ without silently changing the public API, and internal columns are never leaked.
 """
 
 from datetime import datetime
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mgpa_backend.models import MessageRole
+
+# Pinned notes are sent with every chat turn, so their size directly drives token cost.
+NOTE_CONTENT_MAX_CHARS = 10_000
 
 
 class ConversationCreate(BaseModel):
@@ -50,6 +54,45 @@ class ConversationDetail(ConversationRead):
     """A single conversation including all its messages, in order."""
 
     messages: list[MessageRead]
+
+
+class NoteCreate(BaseModel):
+    """Request body for POST /notes."""
+
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=NOTE_CONTENT_MAX_CHARS)
+    is_pinned: bool = False
+
+
+class NoteUpdate(BaseModel):
+    """Request body for PATCH /notes/{id}. Only the fields that are sent get changed."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    content: str | None = Field(default=None, min_length=1, max_length=NOTE_CONTENT_MAX_CHARS)
+    is_pinned: bool | None = None
+
+    @model_validator(mode="after")
+    def reject_explicit_nulls(self) -> Self:
+        """Leaving a field out means "keep it"; sending null is an error (columns are NOT NULL)."""
+        for name in self.model_fields_set:
+            if getattr(self, name) is None:
+                raise ValueError(f"{name} must not be null")
+        return self
+
+    def changes(self) -> dict[str, Any]:
+        """Only the fields the client actually sent."""
+        return self.model_dump(exclude_unset=True)
+
+
+class NoteRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    content: str
+    is_pinned: bool
+    created_at: datetime
+    updated_at: datetime
 
 
 class ChatRequest(BaseModel):

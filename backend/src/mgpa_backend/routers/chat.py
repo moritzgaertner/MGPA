@@ -9,12 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic_ai import ModelMessage
-from sqlalchemy import func, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
-from mgpa_backend.agent import get_agent, to_model_history
+from mgpa_backend.agent import ChatContext, PinnedNote, get_agent, to_model_history
 from mgpa_backend.db import DbSession
-from mgpa_backend.models import Conversation, Message, MessageRole
+from mgpa_backend.models import Conversation, Message, MessageRole, Note
 from mgpa_backend.schemas import (
     ChatDeltaEvent,
     ChatDoneEvent,
@@ -35,6 +35,7 @@ class ChatTurn:
     conversation_id: int
     prompt: str
     history: list[ModelMessage]
+    context: ChatContext
 
 
 def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
@@ -62,7 +63,13 @@ def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
     conversation.updated_at = func.now()  # the database fills in its own current time
     db.commit()
 
-    return ChatTurn(conversation_id=conversation.id, prompt=body.message, history=history)
+    # Pinned notes, oldest first, so their order in the system prompt stays stable.
+    pinned = db.scalars(select(Note).where(Note.is_pinned).order_by(Note.id)).all()
+    context = ChatContext(pinned_notes=[PinnedNote(n.title, n.content) for n in pinned])
+
+    return ChatTurn(
+        conversation_id=conversation.id, prompt=body.message, history=history, context=context
+    )
 
 
 def _save_answer(db: Session, conversation_id: int, text: str) -> int:
@@ -85,7 +92,9 @@ async def chat(
 
     parts: list[str] = []
     try:
-        async with get_agent().run_stream(turn.prompt, message_history=turn.history) as result:
+        async with get_agent().run_stream(
+            turn.prompt, message_history=turn.history, deps=turn.context
+        ) as result:
             async for delta in result.stream_text(delta=True):
                 parts.append(delta)
                 yield ServerSentEvent(data=ChatDeltaEvent(text=delta), event="delta")

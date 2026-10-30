@@ -6,13 +6,13 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic_ai import ModelMessage
+from pydantic_ai import ModelMessage, ModelRequest
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mgpa_backend.agent import get_agent
-from mgpa_backend.models import Conversation, Message, MessageRole
+from mgpa_backend.models import Conversation, Message, MessageRole, Note
 
 
 def parse_sse(body: str) -> list[tuple[str, dict[str, Any]]]:
@@ -86,6 +86,34 @@ def test_chat_sends_previous_messages_as_history(client: TestClient, db: Session
     assert "My name is Alex." in sent_text
     assert "Nice to meet you, Alex!" in sent_text
     assert "Who am I?" in sent_text
+
+
+@pytest.mark.usefixtures("fake_model")
+def test_chat_puts_only_pinned_notes_into_system_prompt(client: TestClient, db: Session) -> None:
+    db.add_all(
+        [
+            Note(title="Training plan", content="Mon: 5x5 squats at 100kg", is_pinned=True),
+            Note(title="Shopping", content="Buy oat milk", is_pinned=False),
+        ]
+    )
+    db.commit()
+
+    client.post("/chat", json={"message": "What do I train on Monday?"})
+
+    request = received[-1][-1]
+    assert isinstance(request, ModelRequest)
+    assert request.instructions is not None
+    assert "Mon: 5x5 squats at 100kg" in request.instructions
+    assert "Buy oat milk" not in request.instructions
+
+
+@pytest.mark.usefixtures("fake_model")
+def test_chat_without_pinned_notes_has_no_pinned_section(client: TestClient) -> None:
+    client.post("/chat", json={"message": "Hi"})
+
+    request = received[-1][-1]
+    assert isinstance(request, ModelRequest)
+    assert "Pinned notes" not in (request.instructions or "")
 
 
 def test_chat_model_error_streams_error_and_keeps_user_message(
