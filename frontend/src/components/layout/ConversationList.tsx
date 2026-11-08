@@ -1,10 +1,11 @@
-import { Box, Button, Dialog, HStack, IconButton, Input, Menu, Portal, Spinner, Stack, Text } from '@chakra-ui/react'
+import { Button, Dialog, HStack, IconButton, Input, Menu, Portal, Spinner, Stack, Text } from '@chakra-ui/react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { useState } from 'react'
 import { LuEllipsis, LuPencil, LuTrash2 } from 'react-icons/lu'
 
 import type { Conversation } from '@/api/client'
 import { useConversations, useDeleteConversation, useRenameConversation } from '@/api/conversations'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { toaster } from '@/components/ui/toaster'
 
 export const UNTITLED = 'New conversation'
@@ -172,33 +173,13 @@ function DeleteDialog({ conversation, onClose }: DialogProps) {
   }
 
   return (
-    <Dialog.Root open onOpenChange={(details) => !details.open && onClose()} placement="center" role="alertdialog">
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <Dialog.Header>
-              <Dialog.Title>Delete conversation?</Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <Box>
-                <Text>
-                  “{conversation.title ?? UNTITLED}” and all its messages will be deleted. This cannot be
-                  undone.
-                </Text>
-              </Box>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button colorPalette="red" onClick={confirm} loading={deleteConversation.isPending}>
-                Delete
-              </Button>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+    <ConfirmDialog
+      title="Delete conversation?"
+      message={`“${conversation.title ?? UNTITLED}” and all its messages will be deleted. This cannot be undone.`}
+      confirmLabel="Delete"
+      onConfirm={confirm}
+      onClose={onClose}
+      loading={deleteConversation.isPending}
+    />
   )
 }
