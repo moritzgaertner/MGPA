@@ -39,6 +39,17 @@ class ChatTurn:
     context: ChatContext
 
 
+TITLE_MAX_CHARS = 60
+
+
+def title_from_message(message: str) -> str:
+    """Default title for a new conversation: its first message, on one line, shortened."""
+    one_line = " ".join(message.split())
+    if len(one_line) <= TITLE_MAX_CHARS:
+        return one_line
+    return one_line[: TITLE_MAX_CHARS - 1].rstrip() + "…"
+
+
 def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
     """Load (or create) the conversation and save the user message.
 
@@ -46,7 +57,7 @@ def start_chat_turn(body: ChatRequest, db: DbSession) -> ChatTurn:
     the status code (200) is already sent — so a 404 must be raised here, not in the stream.
     """
     if body.conversation_id is None:
-        conversation = Conversation()
+        conversation = Conversation(title=title_from_message(body.message))
         db.add(conversation)
     else:
         found = db.get(

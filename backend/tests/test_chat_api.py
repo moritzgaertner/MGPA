@@ -131,6 +131,18 @@ def test_chat_model_error_streams_error_and_keeps_user_message(
     assert roles == [MessageRole.USER]
 
 
+@pytest.mark.usefixtures("fake_model")
+def test_new_conversation_gets_title_from_first_message(client: TestClient, db: Session) -> None:
+    long_message = "Please help me   prepare\nfor my interview " + "x" * 100
+
+    events = parse_sse(client.post("/chat", json={"message": long_message}).text)
+
+    conversation = db.get_one(Conversation, events[0][1]["conversation_id"])
+    assert conversation.title is not None
+    assert conversation.title.startswith("Please help me prepare for my interview")
+    assert len(conversation.title) == 60 and conversation.title.endswith("…")
+
+
 def test_chat_unknown_conversation_returns_404(client: TestClient) -> None:
     response = client.post("/chat", json={"conversation_id": 999_999, "message": "Hi"})
 
