@@ -105,6 +105,9 @@ For every milestone:
   `source ~/.nvm/nvm.sh` first — otherwise the Windows `npm` from `/mnt/c/...` is picked up.
 - Frontend: TypeScript pinned to 6.0.x because typescript-eslint does not support TS 7 yet
   (re-check when upgrading). Linter is ESLint (owner decision), not the template's oxlint.
+- `frontend/package.json` has `"overrides": {"minimatch": "^11.0.1"}` to fix a Dependabot alert
+  (ReDoS in minimatch <11.0.1, dev-only via eslint/typescript-eslint). Remove it once those
+  packages depend on minimatch ≥ 11 themselves (`npm ls minimatch`).
 
 ## Progress
 - [x] M0 Setup — done (CLAUDE.md, repo skeleton, Postgres 18 + pgvector 0.8.7 via Compose,
