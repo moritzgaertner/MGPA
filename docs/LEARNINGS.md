@@ -75,3 +75,45 @@ The endpoint first saves the user message and loads the conversation history —
 a missing conversation is still a clean 404. Then it streams Claude's answer as Server-Sent Events
 (`start`, `delta`…, `done`) and saves the full answer at the end; if the model call fails, the
 client gets a generic `error` event while the details go to the server log.
+
+## M1.5 — Context management
+
+**Built:** notes with `is_pinned` (pinned notes go word for word into every turn's system prompt via
+`@agent.instructions`), and a rolling conversation summary that folds older messages once a turn's
+input exceeds a token threshold. Messages are never deleted; only what Claude receives shrinks.
+
+**Learned**
+- *Two kinds of context* — durable facts (pinned, never summarized) vs. conversation flow
+  (summarizable). Summaries compress and lose numbers; explicit pinning beats guessing importance.
+- *Rolling summary* — old summary + next chunk → new summary; keep the last N messages verbatim and
+  start the kept part with a user message. Runs after `done`, failures are self-healing.
+- *Adding a NOT NULL column to a filled table* needs a `server_default`.
+- *SQLAlchemy identity map* — one session holds one object per row; collections loaded earlier are
+  not refreshed automatically (only visible in tests that share a session).
+
+## M2 — Frontend
+
+**Built:** React + TypeScript SPA with Vite: Chakra UI v3 layout (sidebar, mobile drawer, dark mode),
+TanStack Router file routes (`/chat`, `/chat/$conversationId`, `/notes`, `/knowledge`, `/tasks`),
+TanStack Query for server state, types generated from the backend's OpenAPI schema, streaming chat
+with Markdown, notes page with pin toggle. CI: ESLint, `tsc`, build, plus an API-contract check.
+
+**Learned**
+- *TypeScript* — JavaScript with types; `tsc` is the frontend's mypy. Vite strips the types at build.
+- *React* — components (functions returning UI), props (inputs), state (`useState`): change state
+  and React re-renders. Refs are not watched by React — never read them during render.
+- *Routing* — file = page; URL params are parsed and validated once at the route (`notFound()`).
+- *Server state* — TanStack Query caches by query key; mutations invalidate keys to refetch.
+- *API contract* — FastAPI's OpenAPI → generated TS types; CI diffs the committed schema so backend
+  and frontend can't drift apart. Dev proxy `/api` → backend avoids CORS.
+- *Streaming in the browser* — `EventSource` is GET-only, so POST via `fetch` and parse SSE from the
+  body stream, buffering incomplete blocks. Optimistic preview, then hand over to stored data.
+- *Security* — `react-markdown` never renders raw HTML (no XSS from model output); dependency alerts
+  (Dependabot) fixed with an npm `overrides` pin.
+- *Tooling reality* — newest ≠ best: TS 7 not yet supported by typescript-eslint, so TS 6.
+
+**Interview: "How does the frontend stay in sync with the backend?"**
+The backend's FastAPI generates an OpenAPI schema, from which I generate the TypeScript types, and CI
+fails if the committed schema differs from the backend — so a renamed field breaks the build, not
+production. At runtime TanStack Query caches server data per query key, and every mutation
+invalidates the affected keys, so lists refresh themselves after a change.
