@@ -121,8 +121,15 @@ For every milestone:
   summary (`summary.py`: after `done`, if input tokens > SUMMARY_TRIGGER_TOKENS, fold all but the
   last SUMMARY_KEEP_MESSAGES into `conversations.summary`; messages are never deleted).
   Owner decision: important facts are pinned explicitly, no automatic "importance" detection.
-- [ ] M2 Frontend — next: concept + plan (Vite, React, Chakra v3, TanStack Router + Query, streaming
-  chat UI). Include a simple notes page with pin toggle.
+- [ ] M2 Frontend — in progress. Plan: 1 Vite/React/TS + ESLint + CI job ✓, 2 Chakra v3 layout
+  (responsive sidebar/drawer, dark mode) ✓, 3 TanStack Router file routes ✓, 4 backend connection
+  (Vite proxy /api, OpenAPI → generated TS types, openapi-fetch, TanStack Query, sidebar
+  conversation list with rename/delete, CI contract check) ✓, 5 streaming chat view (fetch +
+  manual SSE parsing, markdown via react-markdown + Chakra Prose, auto-title from first message) ✓,
+  6 notes page with pin toggle (next), 7 wrap-up.
+  UI language: English (portfolio). Known harmless dev warning: next-themes injects a <script>
+  ("Encountered a script tag…") — ignore. E2E check: playwright-core on Windows Node driving
+  installed Edge (channel "msedge"), scripts live in the scratchpad (not in the repo).
 
 ## Planned extension: M5b Training tracker (after M5, owner request 2026-10-30)
 The owner runs a separate training tracker (Excel `Training_Tracker.xlsx`, Streamlit dashboard,
