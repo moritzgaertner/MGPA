@@ -129,7 +129,7 @@ For every milestone:
   (Vite proxy /api, OpenAPI → generated TS types, openapi-fetch, TanStack Query, sidebar
   conversation list with rename/delete, CI contract check) ✓, 5 streaming chat view (fetch +
   manual SSE parsing, markdown via react-markdown + Chakra Prose, auto-title from first message) ✓,
-  6 notes page with pin toggle (next), 7 wrap-up.
+  6 notes page with pin toggle + token estimate ✓, 7 wrap-up (next).
   UI language: English (portfolio). Known harmless dev warning: next-themes injects a <script>
   ("Encountered a script tag…") — ignore. E2E check: playwright-core on Windows Node driving
   installed Edge (channel "msedge"), scripts live in the scratchpad (not in the repo).
