@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, unwrap } from './client'
 
@@ -20,9 +20,9 @@ export function useConversations() {
   })
 }
 
-/** One conversation with all its messages (chat view, step 5). */
-export function useConversation(conversationId: number) {
-  return useQuery({
+/** Query definition for one conversation with all its messages (reused for prefetching). */
+export function conversationQuery(conversationId: number) {
+  return {
     queryKey: conversationKeys.detail(conversationId),
     queryFn: async () =>
       unwrap(
@@ -30,7 +30,16 @@ export function useConversation(conversationId: number) {
           params: { path: { conversation_id: conversationId } },
         }),
       ),
-  })
+  }
+}
+
+/** One conversation with its messages. Without an id (new chat) nothing is fetched. */
+export function useConversation(conversationId: number | undefined) {
+  return useQuery(
+    conversationId === undefined
+      ? { queryKey: conversationKeys.detail(0), queryFn: skipToken }
+      : conversationQuery(conversationId),
+  )
 }
 
 export function useRenameConversation() {

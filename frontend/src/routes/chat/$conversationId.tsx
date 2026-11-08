@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 
-import { PagePlaceholder } from '@/components/PagePlaceholder'
+import { ChatView } from '@/components/chat/ChatView'
 
 // /chat/42 — an existing conversation. "$conversationId" in the file name is the URL parameter.
 export const Route = createFileRoute('/chat/$conversationId')({
@@ -18,10 +18,6 @@ export const Route = createFileRoute('/chat/$conversationId')({
 
 function ConversationPage() {
   const { conversationId } = Route.useParams()
-  return (
-    <PagePlaceholder
-      title={`Conversation #${conversationId}`}
-      description="Loading messages from the backend arrives in step 5."
-    />
-  )
+  // key: switching to another conversation starts a fresh view (no leftover state).
+  return <ChatView key={conversationId} conversationId={conversationId} />
 }
