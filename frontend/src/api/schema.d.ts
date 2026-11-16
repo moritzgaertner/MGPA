@@ -232,6 +232,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/training/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan
+         * @description Active exercises per focus in plan order, with the last weight × sets of each.
+         */
+        get: operations["get_plan_training_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/training/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_training_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/training/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Session */
+        delete: operations["delete_session_training_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/training/exercises/{exercise_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get History
+         * @description All entries of one exercise, oldest first (for a progress chart).
+         */
+        get: operations["get_history_training_exercises__exercise_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/training/exercises/{exercise_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Exercise */
+        patch: operations["update_exercise_training_exercises__exercise_id__patch"];
+        trace?: never;
+    };
+    "/training/stats/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sessions Per Month
+         * @description Number of sessions per month — counted in SQL, not in the browser.
+         */
+        get: operations["sessions_per_month_training_stats_monthly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -425,10 +536,90 @@ export interface components {
             /** Content */
             content: string;
         };
+        /** EntryRead */
+        EntryRead: {
+            /** Exercise Id */
+            exercise_id: number;
+            /** Exercise */
+            exercise: string;
+            /** Unit */
+            unit: string;
+            /** Weight */
+            weight: number;
+            /** Sets */
+            sets: number;
+        };
+        /** ExercisePlanRead */
+        ExercisePlanRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Muscle */
+            muscle: string | null;
+            /** Kind */
+            kind: string | null;
+            /** Unit */
+            unit: string;
+            /** Default Sets */
+            default_sets: number;
+            /** Gear Setting */
+            gear_setting: string | null;
+            /** Caution */
+            caution: string | null;
+            /** Aliases */
+            aliases: string[];
+            last: components["schemas"]["LastValueRead"] | null;
+            /** Skipped Last Time */
+            skipped_last_time: boolean;
+        };
+        /**
+         * ExerciseUpdate
+         * @description Direct edit from the UI; only the fields that are sent change.
+         */
+        ExerciseUpdate: {
+            /** Gear Setting */
+            gear_setting?: string | null;
+            /** Caution */
+            caution?: string | null;
+        };
+        /** FocusPlanRead */
+        FocusPlanRead: {
+            /** Focus */
+            focus: string;
+            /** Last Session Date */
+            last_session_date: string | null;
+            /** Exercises */
+            exercises: components["schemas"]["ExercisePlanRead"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HistoryPoint */
+        HistoryPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weight */
+            weight: number;
+            /** Sets */
+            sets: number;
+        };
+        /** LastValueRead */
+        LastValueRead: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weight */
+            weight: number;
+            /** Sets */
+            sets: number;
         };
         /**
          * MessageRead
@@ -457,6 +648,13 @@ export interface components {
          * @enum {string}
          */
         MessageRole: "user" | "assistant";
+        /** MonthCount */
+        MonthCount: {
+            /** Month */
+            month: string;
+            /** Sessions */
+            sessions: number;
+        };
         /**
          * NoteCreate
          * @description Request body for POST /notes.
@@ -504,6 +702,22 @@ export interface components {
             content?: string | null;
             /** Is Pinned */
             is_pinned?: boolean | null;
+        };
+        /** SessionRead */
+        SessionRead: {
+            /** Id */
+            id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Focus */
+            focus: string;
+            /** Notes */
+            notes: string | null;
+            /** Entries */
+            entries: components["schemas"]["EntryRead"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -1082,6 +1296,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_training_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FocusPlanRead"][];
+                };
+            };
+        };
+    };
+    list_sessions_training_sessions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_session_training_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_history_training_exercises__exercise_id__history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryPoint"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_exercise_training_exercises__exercise_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseUpdate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sessions_per_month_training_stats_monthly_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthCount"][];
                 };
             };
         };

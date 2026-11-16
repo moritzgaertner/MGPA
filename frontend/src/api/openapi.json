@@ -767,6 +767,241 @@
         }
       }
     },
+    "/training/plan": {
+      "get": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Get Plan",
+        "description": "Active exercises per focus in plan order, with the last weight × sets of each.",
+        "operationId": "get_plan_training_plan_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FocusPlanRead"
+                  },
+                  "type": "array",
+                  "title": "Response Get Plan Training Plan Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/sessions": {
+      "get": {
+        "tags": [
+          "training"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_training_sessions_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionRead"
+                  },
+                  "title": "Response List Sessions Training Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Delete Session",
+        "operationId": "delete_session_training_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/exercises/{exercise_id}/history": {
+      "get": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Get History",
+        "description": "All entries of one exercise, oldest first (for a progress chart).",
+        "operationId": "get_history_training_exercises__exercise_id__history_get",
+        "parameters": [
+          {
+            "name": "exercise_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Exercise Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryPoint"
+                  },
+                  "title": "Response Get History Training Exercises  Exercise Id  History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/exercises/{exercise_id}": {
+      "patch": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Update Exercise",
+        "operationId": "update_exercise_training_exercises__exercise_id__patch",
+        "parameters": [
+          {
+            "name": "exercise_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Exercise Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseUpdate"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/stats/monthly": {
+      "get": {
+        "tags": [
+          "training"
+        ],
+        "summary": "Sessions Per Month",
+        "description": "Number of sessions per month — counted in SQL, not in the browser.",
+        "operationId": "sessions_per_month_training_stats_monthly_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MonthCount"
+                  },
+                  "type": "array",
+                  "title": "Response Sessions Per Month Training Stats Monthly Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1153,6 +1388,204 @@
         "title": "DocumentTextCreate",
         "description": "Request body for POST /documents/text: pasted text becomes a Markdown document."
       },
+      "EntryRead": {
+        "properties": {
+          "exercise_id": {
+            "type": "integer",
+            "title": "Exercise Id"
+          },
+          "exercise": {
+            "type": "string",
+            "title": "Exercise"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "sets": {
+            "type": "integer",
+            "title": "Sets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exercise_id",
+          "exercise",
+          "unit",
+          "weight",
+          "sets"
+        ],
+        "title": "EntryRead"
+      },
+      "ExercisePlanRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "muscle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Muscle"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "default_sets": {
+            "type": "integer",
+            "title": "Default Sets"
+          },
+          "gear_setting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gear Setting"
+          },
+          "caution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caution"
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases"
+          },
+          "last": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastValueRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped_last_time": {
+            "type": "boolean",
+            "title": "Skipped Last Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "muscle",
+          "kind",
+          "unit",
+          "default_sets",
+          "gear_setting",
+          "caution",
+          "aliases",
+          "last",
+          "skipped_last_time"
+        ],
+        "title": "ExercisePlanRead"
+      },
+      "ExerciseUpdate": {
+        "properties": {
+          "gear_setting": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gear Setting"
+          },
+          "caution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caution"
+          }
+        },
+        "type": "object",
+        "title": "ExerciseUpdate",
+        "description": "Direct edit from the UI; only the fields that are sent change."
+      },
+      "FocusPlanRead": {
+        "properties": {
+          "focus": {
+            "type": "string",
+            "title": "Focus"
+          },
+          "last_session_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session Date"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/ExercisePlanRead"
+            },
+            "type": "array",
+            "title": "Exercises"
+          }
+        },
+        "type": "object",
+        "required": [
+          "focus",
+          "last_session_date",
+          "exercises"
+        ],
+        "title": "FocusPlanRead"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1165,6 +1598,54 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HistoryPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "sets": {
+            "type": "integer",
+            "title": "Sets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "weight",
+          "sets"
+        ],
+        "title": "HistoryPoint"
+      },
+      "LastValueRead": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "sets": {
+            "type": "integer",
+            "title": "Sets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "weight",
+          "sets"
+        ],
+        "title": "LastValueRead"
       },
       "MessageRead": {
         "properties": {
@@ -1211,6 +1692,24 @@
         ],
         "title": "MessageRole",
         "description": "Who wrote a message. Stored as a Postgres enum, so typos are rejected."
+      },
+      "MonthCount": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "sessions": {
+            "type": "integer",
+            "title": "Sessions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "sessions"
+        ],
+        "title": "MonthCount"
       },
       "NoteCreate": {
         "properties": {
@@ -1323,6 +1822,50 @@
         "type": "object",
         "title": "NoteUpdate",
         "description": "Request body for PATCH /notes/{id}. Only the fields that are sent get changed."
+      },
+      "SessionRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "focus": {
+            "type": "string",
+            "title": "Focus"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/EntryRead"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "date",
+          "focus",
+          "notes",
+          "entries"
+        ],
+        "title": "SessionRead"
       },
       "ValidationError": {
         "properties": {
