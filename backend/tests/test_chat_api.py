@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic_ai import ModelMessage, ModelRequest
 from pydantic_ai.models.function import AgentInfo, FunctionModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from mgpa_backend.agent import get_agent
@@ -108,7 +108,10 @@ def test_chat_puts_only_pinned_notes_into_system_prompt(client: TestClient, db: 
 
 
 @pytest.mark.usefixtures("fake_model")
-def test_chat_without_pinned_notes_has_no_pinned_section(client: TestClient) -> None:
+def test_chat_without_pinned_notes_has_no_pinned_section(client: TestClient, db: Session) -> None:
+    db.execute(update(Note).values(is_pinned=False))  # rolled back after the test
+    db.commit()
+
     client.post("/chat", json={"message": "Hi"})
 
     request = received[-1][-1]

@@ -49,8 +49,9 @@ def test_list_puts_pinned_first_and_filters(client: TestClient) -> None:
     all_ids = [n["id"] for n in client.get("/notes").json()]
     assert all_ids.index(pinned["id"]) < all_ids.index(plain["id"])
 
-    only_pinned = client.get("/notes", params={"pinned": True}).json()
-    assert [n["id"] for n in only_pinned] == [pinned["id"]]
+    only_pinned = [n["id"] for n in client.get("/notes", params={"pinned": True}).json()]
+    assert pinned["id"] in only_pinned
+    assert plain["id"] not in only_pinned
 
 
 def test_delete_note(client: TestClient) -> None:

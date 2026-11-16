@@ -33,10 +33,13 @@ def test_conversation_with_messages_roundtrip(db: Session) -> None:
 
 
 def test_role_is_stored_as_lowercase_value(db: Session) -> None:
-    db.add(Conversation(messages=[Message(role=MessageRole.USER, content="x")]))
+    message = Message(role=MessageRole.USER, content="x")
+    db.add(Conversation(messages=[message]))
     db.commit()
 
-    stored = db.execute(text("SELECT role::text FROM messages")).scalar_one()
+    stored = db.execute(
+        text("SELECT role::text FROM messages WHERE id = :id"), {"id": message.id}
+    ).scalar_one()
     assert stored == "user"
 
 
@@ -45,10 +48,11 @@ def test_deleting_conversation_deletes_its_messages(db: Session) -> None:
     db.add(conversation)
     db.commit()
 
+    conversation_id = conversation.id
     db.delete(conversation)
     db.commit()
 
-    assert db.scalars(select(Message)).all() == []
+    assert db.scalars(select(Message).where(Message.conversation_id == conversation_id)).all() == []
 
 
 def test_message_requires_existing_conversation(db: Session) -> None:
