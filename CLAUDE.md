@@ -115,6 +115,8 @@ For every milestone:
   `source ~/.nvm/nvm.sh` first — otherwise the Windows `npm` from `/mnt/c/...` is picked up.
 - Frontend: TypeScript pinned to 6.0.x because typescript-eslint does not support TS 7 yet
   (re-check when upgrading). Linter is ESLint (owner decision), not the template's oxlint.
+- `pipelines` depends on the backend package (editable path dependency): after changing backend
+  dependencies, run `uv lock` in `pipelines/` too, or CI fails on `uv sync --locked`.
 - `frontend/package.json` has `"overrides": {"minimatch": "^11.0.1"}` to fix a Dependabot alert
   (ReDoS in minimatch <11.0.1, dev-only via eslint/typescript-eslint). Remove it once those
   packages depend on minimatch ≥ 11 themselves (`npm ls minimatch`).
