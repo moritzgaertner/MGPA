@@ -1,3 +1,10 @@
+/** {"Sitz": "4", "Knie": "3"} -> "Sitz 4 · Knie 3"; a lone "Einstellung" is shown bare. */
+export function formatSettings(settings: Record<string, string>) {
+  const entries = Object.entries(settings)
+  if (entries.length === 1 && entries[0][0] === 'Einstellung') return entries[0][1]
+  return entries.map(([name, value]) => `${name} ${value}`).join(' · ')
+}
+
 /** "77 kg × 3", "2.25 min × 2" */
 export const formatAmount = (weight: number, sets: number, unit: string) => `${weight.toLocaleString()} ${unit} × ${sets}`
 

@@ -64,11 +64,11 @@ export function useDeleteTrainingSession() {
 export function useUpdateExercise() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, gear_setting }: { id: number; gear_setting: string }) =>
+    mutationFn: async ({ id, settings }: { id: number; settings: Record<string, string> }) =>
       unwrap(
         await api.PATCH('/training/exercises/{exercise_id}', {
           params: { path: { exercise_id: id } },
-          body: { gear_setting },
+          body: { settings },
         }),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: trainingKeys.plan() }),

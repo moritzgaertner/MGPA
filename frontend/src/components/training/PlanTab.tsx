@@ -1,11 +1,11 @@
-import { Badge, Box, Button, Card, Dialog, Heading, HStack, IconButton, Input, Portal, Spinner, Stack, Text } from '@chakra-ui/react'
+import { Badge, Box, Card, Heading, HStack, IconButton, Spinner, Stack, Text } from '@chakra-ui/react'
 import { useState } from 'react'
 import { LuPencil } from 'react-icons/lu'
 
-import { type ExercisePlan, useTrainingPlan, useUpdateExercise } from '@/api/training'
-import { toaster } from '@/components/ui/toaster'
+import { type ExercisePlan, useTrainingPlan } from '@/api/training'
 
-import { formatAmount, formatDay } from './format'
+import { formatAmount, formatDay, formatSettings } from './format'
+import { SettingsDialog } from './SettingsDialog'
 
 /** The plan per focus: order, last weight × sets, machine settings, warnings. */
 export function PlanTab() {
@@ -45,10 +45,14 @@ export function PlanTab() {
                         </Badge>
                       )}
                     </HStack>
-                    <Text fontSize="sm" color="fg.muted">
-                      {exercise.gear_setting ? `Setting: ${exercise.gear_setting}` : 'No setting'}
-                      {exercise.aliases.length > 0 && ` · ${exercise.aliases.join(', ')}`}
+                    <Text fontSize="sm" color={Object.keys(exercise.settings).length ? 'fg' : 'fg.muted'}>
+                      {Object.keys(exercise.settings).length ? `⚙️ ${formatSettings(exercise.settings)}` : 'No settings'}
                     </Text>
+                    {exercise.aliases.length > 0 && (
+                      <Text fontSize="xs" color="fg.muted">
+                        {exercise.aliases.join(', ')}
+                      </Text>
+                    )}
                   </Box>
                   <Stack gap="0" align="flex-end" flexShrink={0}>
                     <Text fontWeight="semibold">
@@ -60,7 +64,12 @@ export function PlanTab() {
                       </Text>
                     )}
                   </Stack>
-                  <IconButton aria-label={`Edit setting of ${exercise.name}`} size="xs" variant="ghost" onClick={() => setEditing(exercise)}>
+                  <IconButton
+                    aria-label={`Edit settings of ${exercise.name}`}
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => setEditing(exercise)}
+                  >
                     <LuPencil />
                   </IconButton>
                 </HStack>
@@ -69,54 +78,7 @@ export function PlanTab() {
           </Card.Body>
         </Card.Root>
       ))}
-      {editing && <GearSettingDialog exercise={editing} onClose={() => setEditing(null)} />}
+      {editing && <SettingsDialog exercise={editing} onClose={() => setEditing(null)} />}
     </Stack>
-  )
-}
-
-function GearSettingDialog({ exercise, onClose }: { exercise: ExercisePlan; onClose: () => void }) {
-  const [value, setValue] = useState(exercise.gear_setting ?? '')
-  const update = useUpdateExercise()
-
-  const save = () =>
-    update.mutate(
-      { id: exercise.id, gear_setting: value },
-      {
-        onSuccess: onClose,
-        onError: (error) => toaster.error({ title: 'Could not save the setting', description: error.message }),
-      },
-    )
-
-  return (
-    <Dialog.Root open onOpenChange={(details) => !details.open && onClose()} placement="center">
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                save()
-              }}
-            >
-              <Dialog.Header>
-                <Dialog.Title>Setting · {exercise.name}</Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body>
-                <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. Stufe 6" maxLength={500} autoFocus />
-              </Dialog.Body>
-              <Dialog.Footer>
-                <Button variant="outline" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button type="submit" colorPalette="teal" loading={update.isPending}>
-                  Save
-                </Button>
-              </Dialog.Footer>
-            </form>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
   )
 }

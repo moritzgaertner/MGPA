@@ -2,7 +2,7 @@ import { Badge, Button, Card, HStack, Stack, Text } from '@chakra-ui/react'
 import { LuCheck, LuX } from 'react-icons/lu'
 
 import { type Action, useDecideAction } from '@/api/actions'
-import { formatAmount } from '@/components/training/format'
+import { formatAmount, formatSettings } from '@/components/training/format'
 import { toaster } from '@/components/ui/toaster'
 
 type ActionCardProps = {
@@ -37,11 +37,14 @@ function PayloadPreview({ action }: ActionCardProps) {
       </Stack>
     )
   }
-  if (action.kind === 'update_gear_setting') {
+  if (action.kind === 'update_machine_settings') {
+    const before = (payload.old_settings ?? {}) as Record<string, string>
+    const after = (payload.new_settings ?? {}) as Record<string, string>
     return (
-      <Text fontSize="sm" color="fg.muted">
-        {String(payload.old_setting ?? '—')} → {String(payload.new_setting ?? '—')}
-      </Text>
+      <Stack gap="0" fontSize="sm">
+        <Text color="fg.muted">Before: {Object.keys(before).length ? formatSettings(before) : '—'}</Text>
+        <Text>Now: {Object.keys(after).length ? formatSettings(after) : '—'}</Text>
+      </Stack>
     )
   }
   return null
