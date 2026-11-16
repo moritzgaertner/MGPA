@@ -173,3 +173,26 @@ partition of an asset that chunks it along Markdown headings, embeds the chunks 
 writes them to pgvector. The chat agent has a `search_knowledge` tool that embeds the question, does
 a cosine nearest-neighbour search and returns passages with their source, which Claude cites. Dagster
 gives me per-document lineage, run history and re-materialisation, which a cron script wouldn't.
+
+## M5 — Tools with human-in-the-loop
+
+**Built:** write tools only *propose* (`actions` table: kind, JSON payload, label, status
+proposed → confirmed / rejected); the chat streams a `proposal` event and renders a card with
+Save / Discard; confirm executes deterministically in the backend (`actions.REGISTRY`), without
+another LLM call. Tools: `propose_note`, `find_notes` (read-only, no confirmation).
+
+**Learned**
+- *Two HITL designs* — (a) pause the agent run on a tool and resume it after approval (needs the
+  full run state persisted, and one more LLM call per decision); (b) proposal tools + direct
+  execution on confirm. Chose (b): simpler, cheaper, several proposals per answer.
+- *Validate twice* — tool arguments are validated when proposing (invalid → `ModelRetry`, the model
+  fixes them) and again on confirm, so a stored payload can't bypass the rules.
+- *Idempotency* — confirming twice returns 409; an action can only leave `proposed` once.
+- *Extensible by registry* — new action kinds (training, meals, weight) = payload model + executor;
+  `kind` is a string column, so no DB migration per new kind.
+
+**Interview: "How do you keep an agent from writing wrong data?"**
+The agent has no direct write access: its write tools only create proposals, which the user sees as
+cards and confirms or discards. On confirm, the backend re-validates the payload and executes it in a
+single transaction — deterministic code, no second model call — and an action can be confirmed only
+once.
