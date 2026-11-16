@@ -9,7 +9,7 @@ Dagster adds run history, retries from the UI and per-document lineage on top.
 import dagster as dg
 from mgpa_backend.db import SessionLocal
 from mgpa_backend.knowledge.embeddings import Embedder, get_embedder
-from mgpa_backend.knowledge.ingest import ingest_document, pending_documents
+from mgpa_backend.knowledge.ingest import ingest_document, mark_failed, pending_documents
 
 DOCUMENTS = "documents"
 documents_partitions = dg.DynamicPartitionsDefinition(name=DOCUMENTS)
@@ -32,7 +32,13 @@ def document_chunks(
 ) -> dg.MaterializeResult:  # type: ignore[type-arg]
     document_id = int(context.partition_key)
     with SessionLocal() as db:
-        count = ingest_document(db, document_id, embedder.get())
+        try:
+            client = embedder.get()
+        except Exception as error:
+            # e.g. no VOYAGE_API_KEY: fail the document visibly, not just the Dagster run.
+            mark_failed(db, document_id, error)
+            raise
+        count = ingest_document(db, document_id, client)
     return dg.MaterializeResult(metadata={"chunks": count})
 
 

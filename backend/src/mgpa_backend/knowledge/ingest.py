@@ -39,6 +39,17 @@ def pending_documents(db: Session) -> list[tuple[int, datetime]]:
     return [(row.id, row.updated_at) for row in rows]
 
 
+def mark_failed(db: Session, document_id: int, error: BaseException) -> None:
+    """Record why ingestion failed, so the UI shows the reason instead of waiting forever."""
+    db.rollback()
+    document = db.get(Document, document_id)
+    if document is None:  # deleted in the meantime
+        return
+    document.status = DocumentStatus.FAILED
+    document.error = str(error)[:1_000] or type(error).__name__
+    db.commit()
+
+
 def ingest_document(db: Session, document_id: int, embedder: Embedder) -> int:
     """Replace the document's chunks with freshly computed ones. Returns the chunk count.
 
@@ -72,11 +83,7 @@ def ingest_document(db: Session, document_id: int, embedder: Embedder) -> int:
         document.chunk_count = len(drafts)
         db.commit()
     except Exception as error:
-        db.rollback()
-        failed = db.get_one(Document, document_id)
-        failed.status = DocumentStatus.FAILED
-        failed.error = str(error)[:1_000] or type(error).__name__
-        db.commit()
+        mark_failed(db, document_id, error)
         logger.exception("Ingesting document %s failed", document_id)
         raise
 

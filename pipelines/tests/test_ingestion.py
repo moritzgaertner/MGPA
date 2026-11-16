@@ -77,6 +77,31 @@ def test_sensor_requests_a_run_for_each_pending_document(document: int) -> None:
     assert str(document) in added
 
 
+class BrokenEmbedderResource(EmbedderResource):
+    def get(self) -> Embedder:
+        raise RuntimeError("VOYAGE_API_KEY is not set")
+
+
+def test_setup_error_marks_document_failed(document: int) -> None:
+    """Regression: an error before ingestion started left the document 'pending' forever."""
+    instance = dg.DagsterInstance.ephemeral()
+    instance.add_dynamic_partitions(DOCUMENTS, [str(document)])
+
+    result = dg.materialize(
+        [document_chunks],
+        partition_key=str(document),
+        instance=instance,
+        resources={"embedder": BrokenEmbedderResource()},
+        raise_on_error=False,
+    )
+
+    assert not result.success
+    with SessionLocal() as db:
+        failed = db.get_one(Document, document)
+        assert failed.status == DocumentStatus.FAILED
+        assert failed.error == "VOYAGE_API_KEY is not set"
+
+
 def test_asset_ingests_the_document(document: int) -> None:
     instance = dg.DagsterInstance.ephemeral()
     instance.add_dynamic_partitions(DOCUMENTS, [str(document)])
