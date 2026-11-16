@@ -116,14 +116,14 @@ class DocumentStatus(StrEnum):
 
 
 class Document(TimestampMixin, Base):
-    """An uploaded PDF or Markdown file. The file itself lives on disk, not in the database."""
+    """An uploaded Markdown / plain-text file. The file itself lives on disk, not in the database."""
 
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # Original name as uploaded, shown in the UI and in citations.
     filename: Mapped[str] = mapped_column(String(255))
-    # MIME type, e.g. "application/pdf" or "text/markdown"; decides which parser Dagster uses.
+    # MIME type: "text/markdown" or "text/plain" (Markdown gets heading-aware chunking).
     media_type: Mapped[str] = mapped_column(String(100))
     size_bytes: Mapped[int]
     # Fingerprint of the file content; unique, so the same file cannot be ingested twice.

@@ -52,7 +52,8 @@ For every milestone:
 
 ## Product scope
 - Chat with Claude, streamed responses, history persisted in Postgres
-- Knowledge base: upload PDFs and Markdown; RAG answers with source citations
+- Knowledge base: upload Markdown / plain-text files or paste text (no PDF — owner decision
+  2026-11-16, convert PDFs to text outside MGPA if needed); RAG answers with source citations
 - Tools: create/query notes and tasks, search the knowledge base
 - Human-in-the-loop: write actions appear in the UI as proposals and run only after confirmation
 - Long-running jobs: multi-step research workflow (retries, timeouts) and a scheduled daily
@@ -68,7 +69,7 @@ For every milestone:
 | Workflows | Temporal (agent jobs, daily briefing via Temporal Schedules). **No cron.** |
 | Data pipelines | Dagster for document ingestion (parse, chunk, embed, load) as assets with schedule/sensor |
 | AI | Pydantic AI with Claude via the Anthropic API; **Langfuse Cloud** for tracing and evals |
-| Embeddings | Not provided by Anthropic — decision pending in M4 (Voyage AI vs. local model) |
+| Embeddings | Voyage AI `voyage-4`, 1024 dimensions (multilingual; 200M free tokens). Chosen 2026-11-16 as the recommended default — owner did not object |
 | Infra | Docker Compose (local + prod), Caddy (HTTPS), GitHub Actions (CI + deploy) |
 | Quality | Backend: ruff, mypy, pytest. Frontend: ESLint, tsc |
 

@@ -15,8 +15,9 @@ flowchart LR
     TS <--> WK[Temporal worker<br/>research, daily briefing]
     WK --> AG
     API -- "store upload" --> FS[/File volume/]
-    FS --> DG[Dagster<br/>parse, chunk, embed]
-    DG -- "embeddings" --> EM[(Embedding API)]
+    FS --> DG[Dagster<br/>read, chunk, embed]
+    DG -- "embeddings" --> EM[(Voyage AI<br/>embeddings)]
+    AG -- "query embedding" --> EM
     DG -- "chunks + vectors" --> PG
 ```
 
@@ -36,8 +37,10 @@ flowchart LR
 
 1. **Chat** — Frontend posts a message → API stores it → agent streams Claude's answer back as
    Server-Sent Events → API stores the final answer; the run is traced in Langfuse.
-2. **Ingestion** — API saves an uploaded PDF/Markdown file and a `documents` row (`pending`) →
-   Dagster sensor picks it up → parse → chunk → embed → write `chunks` with vectors to pgvector.
+2. **Ingestion** — API saves an uploaded Markdown/plain-text file (or pasted text) and a
+   `documents` row (`pending`) → Dagster sensor adds a partition per document and runs the asset →
+   read → chunk (Markdown-heading aware) → embed (Voyage, `input_type=document`) → write `chunks`
+   with vectors to pgvector → status `ready` / `failed`. No PDF parsing by design.
 3. **RAG** — Agent tool `search_knowledge` embeds the question, runs a nearest-neighbour query
    in pgvector and returns chunks with their source document for citations.
 4. **Human-in-the-loop** — Write tools (create note/task) do not execute directly; they return a
@@ -50,7 +53,7 @@ flowchart LR
 | Item | Cost driver | Mitigation |
 |---|---|---|
 | Anthropic API | Tokens per chat/job | Small model by default (configurable via env), prompt caching |
-| Embeddings | Tokens at ingestion and per query | Embed each chunk once; provider decided in M4 |
+| Embeddings (Voyage `voyage-4`) | Tokens at ingestion and per query ($0.06/M after 200M free) | Embed each chunk once; re-embed only on re-upload |
 | VPS (Hetzner) | Fixed monthly | Smallest instance that fits all containers |
 | Langfuse Cloud | Free tier event limits | Single user stays far below them |
 | GitHub Actions | Minutes on private repos | Runs take seconds |
