@@ -112,8 +112,35 @@ with Markdown, notes page with pin toggle. CI: ESLint, `tsc`, build, plus an API
   (Dependabot) fixed with an npm `overrides` pin.
 - *Tooling reality* — newest ≠ best: TS 7 not yet supported by typescript-eslint, so TS 6.
 
-**Interview: "How does the frontend stay in sync with the backend?"**
+**Interview (M2): "How does the frontend stay in sync with the backend?"**
 The backend's FastAPI generates an OpenAPI schema, from which I generate the TypeScript types, and CI
 fails if the committed schema differs from the backend — so a renamed field breaks the build, not
 production. At runtime TanStack Query caches server data per query key, and every mutation
 invalidates the affected keys, so lists refresh themselves after a change.
+
+## M3 — Observability
+
+**Built:** every agent run (chat and summary) is traced to Langfuse Cloud (EU) via OpenTelemetry:
+full prompt incl. pinned notes, answer, tokens, cost, latency. Traces are named (chat/summary),
+grouped into a session per conversation, labelled with an environment. Tracing is off without keys,
+so CI and tests never send data. Tests also got their own database (`mgpa_test`).
+
+**Learned**
+- *OpenTelemetry* — vendor-neutral standard for traces/spans; Pydantic AI emits spans,
+  Langfuse is just the backend that stores and prices them (swappable).
+- *Instrumentation can overlap* — the Anthropic SDK emitted its own spans too, so every call was
+  counted twice in Langfuse. Found only in the live check; fixed with `open_telemetry=False` on the
+  SDK client and pinned with a regression test. Always verify cost numbers against a manual calc
+  (886 in × $0.10/M + 33 out × $0.50/M = $0.000105 ✓).
+- *Test isolation* — tests that share the dev database silently depend on real data. A separate
+  test database (created + migrated in `conftest.py`) removes that coupling.
+- *Privacy* — traces contain full prompts (incl. personal notes) and live at a third party;
+  EU region, Hobby plan = 30 days visible. Masking is possible but kills debugging value.
+- *Vendor APIs change* — Langfuse's v1 trace-read endpoint now returns 410; reads go through
+  `/api/public/v2/observations`, which is rate-limited (poll sparingly).
+
+**Interview: "How do you know what your agent costs and why it answered something?"**
+Every agent run is traced with OpenTelemetry into Langfuse, so for each answer I see the exact
+prompt — system prompt, pinned notes, history — plus tokens, cost and latency, grouped per
+conversation. That's how I found that every call was being counted twice: two layers were both
+instrumenting the model call, and I disabled the redundant one and locked that in with a test.
