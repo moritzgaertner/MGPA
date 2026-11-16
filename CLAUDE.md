@@ -144,8 +144,14 @@ For every milestone:
   installed Edge (channel "msedge"), scripts live in the scratchpad (not in the repo).
   The owner sometimes runs commands in Windows PowerShell by mistake (`PS …>` prompt): remind them
   to type `wsl` first or pick the "Ubuntu (WSL)" terminal profile in VS Code.
-- [ ] M3 Observability — next: concept + plan proposed (Langfuse Cloud EU, Hobby plan = 50k
-  units/month free; Pydantic AI → OpenTelemetry → Langfuse; tracing disabled when keys are missing).
+- [ ] M3 Observability — code done, waiting for the owner's Langfuse keys for the live check.
+  `observability.py`: Langfuse client (v5, OpenTelemetry) + `Agent.instrument_all()`, started in
+  the FastAPI lifespan, off without keys; `traced()` labels runs (trace name chat/summary,
+  session = `conversation-<id>`, tags). Test captures spans with an InMemorySpanExporter.
+  Remaining: live check in Langfuse (cost for claude-haiku-5-5 — add a model price definition in
+  Langfuse if it is unknown), LEARNINGS entry.
+  Tests now use their own database `<db>_test` (created + migrated in conftest.py) — never the
+  owner's real data.
 
 ## Planned extension: M5b Training tracker (after M5, owner request 2026-10-30)
 The owner runs a separate training tracker (Excel `Training_Tracker.xlsx`, Streamlit dashboard,
