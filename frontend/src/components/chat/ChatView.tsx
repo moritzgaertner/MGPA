@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
+import type { Action } from '@/api/actions'
 import { streamChat } from '@/api/chat'
 import { ApiError } from '@/api/client'
 import { conversationKeys, conversationQuery, useConversation } from '@/api/conversations'
@@ -19,11 +20,15 @@ type PendingTurn = {
   streaming: boolean
   /** What the assistant did along the way, e.g. "Searched knowledge base: “leg press”". */
   activities: string[]
+  /** Proposals made in this answer (confirmable once the answer is stored). */
+  proposals: Action[]
 }
 
-/** Human-readable label for a tool call shown above the answer. */
-function describeTool(name: string, args: Record<string, unknown>): string {
+/** Human-readable label for a tool call shown above the answer (null = don't show). */
+function describeTool(name: string, args: Record<string, unknown>): string | null {
   if (name === 'search_knowledge') return `Searched knowledge base: “${String(args.query ?? '')}”`
+  if (name === 'find_notes') return `Looked through notes${args.query ? `: “${String(args.query)}”` : ''}`
+  if (name.startsWith('propose_')) return null // shown as a proposal card instead
   return `Used tool: ${name}`
 }
 
@@ -54,7 +59,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const send = async (text: string) => {
     const controller = new AbortController()
     abortRef.current = controller
-    setPending({ userText: text, answer: '', streaming: true, activities: [] })
+    setPending({ userText: text, answer: '', streaming: true, activities: [], proposals: [] })
     let id = conversationId
 
     try {
@@ -68,7 +73,10 @@ export function ChatView({ conversationId }: ChatViewProps) {
           setPending((turn) => turn && { ...turn, answer: turn.answer + piece })
         } else if (event.event === 'tool') {
           const activity = describeTool(event.data.name, event.data.args)
-          setPending((turn) => turn && { ...turn, activities: [...turn.activities, activity] })
+          if (activity) setPending((turn) => turn && { ...turn, activities: [...turn.activities, activity] })
+        } else if (event.event === 'proposal') {
+          const proposal = event.data.action
+          setPending((turn) => turn && { ...turn, proposals: [...turn.proposals, proposal] })
         } else if (event.event === 'error') {
           toaster.error({ title: 'No answer', description: event.data.detail })
         }
@@ -118,7 +126,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             </Center>
           )}
           {messages.map((message) => (
-            <MessageBubble key={message.id} role={message.role} content={message.content} />
+            <MessageBubble key={message.id} role={message.role} content={message.content} actions={message.actions} />
           ))}
           {pending && (
             <>
@@ -128,6 +136,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
                 content={pending.answer}
                 streaming={pending.streaming}
                 activities={pending.activities}
+                actions={pending.proposals}
               />
             </>
           )}

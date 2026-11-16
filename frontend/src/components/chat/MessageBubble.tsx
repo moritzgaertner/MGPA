@@ -1,9 +1,12 @@
-import { Box, Flex, HStack, Spinner, Text } from '@chakra-ui/react'
+import { Box, Flex, HStack, Spinner, Stack, Text } from '@chakra-ui/react'
 import { LuSearch } from 'react-icons/lu'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+import type { Action } from '@/api/actions'
 import { Prose } from '@/components/ui/prose'
+
+import { ActionCard } from './ActionCard'
 
 type MessageBubbleProps = {
   role: 'user' | 'assistant'
@@ -12,13 +15,21 @@ type MessageBubbleProps = {
   streaming?: boolean
   /** Tool activity shown above an answer while it streams (e.g. a knowledge-base search). */
   activities?: string[]
+  /** Proposals made in this answer, shown as confirm/discard cards below it. */
+  actions?: Action[]
 }
 
 /**
  * One chat message. User messages: plain text in a bubble on the right.
- * Assistant messages: rendered Markdown (lists, code, tables) on the left.
+ * Assistant messages: rendered Markdown (lists, code, tables) on the left, plus proposal cards.
  */
-export function MessageBubble({ role, content, streaming = false, activities = [] }: MessageBubbleProps) {
+export function MessageBubble({
+  role,
+  content,
+  streaming = false,
+  activities = [],
+  actions = [],
+}: MessageBubbleProps) {
   if (role === 'user') {
     return (
       <Flex justify="flex-end">
@@ -39,9 +50,18 @@ export function MessageBubble({ role, content, streaming = false, activities = [
       ))}
       {/* react-markdown never renders raw HTML from the text, so model output can't inject
           scripts into the page (XSS). */}
-      <Prose maxW="full" color="fg" fontSize="md">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-      </Prose>
+      {content && (
+        <Prose maxW="full" color="fg" fontSize="md">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </Prose>
+      )}
+      {actions.length > 0 && (
+        <Stack gap="2" mt="3" maxW="md">
+          {actions.map((action) => (
+            <ActionCard key={action.id} action={action} />
+          ))}
+        </Stack>
+      )}
       {streaming && <Spinner size="xs" color="fg.muted" mt="1" />}
     </Box>
   )
