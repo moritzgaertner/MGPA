@@ -55,7 +55,11 @@ export interface paths {
         put?: never;
         /**
          * Chat
-         * @description Stream the answer: one `start`, many `delta`, then `done` (or `error`).
+         * @description Stream the answer: `start`, then `delta` text pieces and `tool` notices, then `done`
+         *     (or `error`).
+         *
+         *     Uses run_stream_events (not run_stream): run_stream would end at the first text the model
+         *     writes, so a tool call after "Let me check…" would never run.
          */
         post: operations["chat_chat_post"];
         delete?: never;

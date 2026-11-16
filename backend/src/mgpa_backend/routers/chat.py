@@ -8,12 +8,29 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.sse import EventSourceResponse, ServerSentEvent
-from pydantic_ai import ModelMessage
+from pydantic_ai import (
+    AgentRunResultEvent,
+    FunctionToolCallEvent,
+    ModelMessage,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+)
+from pydantic_ai.usage import RunUsage
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
-from mgpa_backend.agent import ChatContext, PinnedNote, get_agent, to_model_history
+from mgpa_backend.agent import (
+    ChatContext,
+    KnowledgeSearch,
+    PinnedNote,
+    get_agent,
+    to_model_history,
+)
 from mgpa_backend.db import DbSession
+from mgpa_backend.knowledge.embeddings import get_embedder
+from mgpa_backend.knowledge.search import SearchHit, search_chunks
 from mgpa_backend.models import Conversation, Message, MessageRole, Note
 from mgpa_backend.observability import traced
 from mgpa_backend.schemas import (
@@ -22,6 +39,7 @@ from mgpa_backend.schemas import (
     ChatErrorEvent,
     ChatRequest,
     ChatStartEvent,
+    ChatToolEvent,
 )
 from mgpa_backend.summary import summarize_if_needed
 
@@ -100,23 +118,63 @@ def _save_answer(db: Session, conversation_id: int, text: str) -> int:
     return message.id
 
 
+def make_knowledge_search(db: Session) -> KnowledgeSearch:
+    """Knowledge search bound to this request's DB session (so tests see their own data)."""
+
+    async def search(query: str) -> list[SearchHit]:
+        # Both steps block (HTTP call to Voyage, SQL query): run them in worker threads.
+        embedding = await run_in_threadpool(get_embedder().embed_query, query)
+        return await run_in_threadpool(search_chunks, db, embedding)
+
+    return search
+
+
 @router.post("/chat", response_class=EventSourceResponse)
 async def chat(
     turn: Annotated[ChatTurn, Depends(start_chat_turn)], db: DbSession
 ) -> AsyncIterable[ServerSentEvent]:
-    """Stream the answer: one `start`, many `delta`, then `done` (or `error`)."""
+    """Stream the answer: `start`, then `delta` text pieces and `tool` notices, then `done`
+    (or `error`).
+
+    Uses run_stream_events (not run_stream): run_stream would end at the first text the model
+    writes, so a tool call after "Let me check…" would never run.
+    """
     yield ServerSentEvent(data=ChatStartEvent(conversation_id=turn.conversation_id), event="start")
+    turn.context.search_knowledge = make_knowledge_search(db)
 
     parts: list[str] = []
+    usage: RunUsage | None = None
     try:
         with traced("chat", turn.conversation_id, tags=["chat"]):
-            async with get_agent().run_stream(
+            async with get_agent().run_stream_events(
                 turn.prompt, message_history=turn.history, deps=turn.context
-            ) as result:
-                async for delta in result.stream_text(delta=True):
-                    parts.append(delta)
-                    yield ServerSentEvent(data=ChatDeltaEvent(text=delta), event="delta")
-                usage = result.usage
+            ) as events:
+                async for event in events:
+                    if isinstance(event, PartStartEvent) and isinstance(event.part, TextPart):
+                        # A new text block (e.g. after a tool call): separate it from the last.
+                        piece = ("\n\n" if parts else "") + event.part.content
+                    elif isinstance(event, PartDeltaEvent) and isinstance(
+                        event.delta, TextPartDelta
+                    ):
+                        piece = event.delta.content_delta
+                    elif isinstance(event, FunctionToolCallEvent):
+                        yield ServerSentEvent(
+                            data=ChatToolEvent(
+                                name=event.part.tool_name, args=event.part.args_as_dict()
+                            ),
+                            event="tool",
+                        )
+                        continue
+                    elif isinstance(event, AgentRunResultEvent):
+                        usage = event.result.usage
+                        continue
+                    else:
+                        continue
+                    if piece:
+                        parts.append(piece)
+                        yield ServerSentEvent(data=ChatDeltaEvent(text=piece), event="delta")
+        if usage is None:
+            raise RuntimeError("Agent run ended without a result")
     except Exception:
         # Full details go to the server log; the client only gets a generic message.
         logger.exception("Model call failed for conversation %s", turn.conversation_id)

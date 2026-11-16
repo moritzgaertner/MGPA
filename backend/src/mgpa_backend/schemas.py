@@ -140,6 +140,13 @@ class ChatDeltaEvent(BaseModel):
     text: str
 
 
+class ChatToolEvent(BaseModel):
+    """event: tool — the assistant is using a tool (e.g. searching the knowledge base)."""
+
+    name: str
+    args: dict[str, Any]
+
+
 class ChatDoneEvent(BaseModel):
     """event: done — the answer is complete and saved."""
 
