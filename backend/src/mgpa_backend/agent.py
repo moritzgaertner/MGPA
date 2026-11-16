@@ -28,6 +28,9 @@ from mgpa_backend.config import get_settings
 from mgpa_backend.knowledge.embeddings import EmbeddingsNotConfiguredError
 from mgpa_backend.knowledge.search import SearchHit
 from mgpa_backend.models import Action, Message, MessageRole, Note
+from mgpa_backend.training import service as training_service
+from mgpa_backend.training import tools as training_tools
+from mgpa_backend.training.tools import TrainingEntryInput
 
 
 def make_claude_model() -> AnthropicModel:
@@ -58,7 +61,14 @@ passages don't contain the answer, say so.
 
 You cannot write data directly. To save something (e.g. "notier dir …", "merk dir …"), call a \
 `propose_*` tool: the user sees a card and confirms or discards it in the app. Never say that \
-something is saved — say it is ready to confirm. Use `find_notes` to look up saved notes.\
+something is saved — say it is ready to confirm. Use `find_notes` to look up saved notes.
+
+Training: the user logs workouts in short form, e.g. "BP 77, Skull 35, KB 15" (weights in kg; \
+abbreviations are resolved by the tools; sets default to the exercise's usual number). Log them \
+with `propose_training_log` (date defaults to today; resolve "gestern" etc. yourself). For \
+"Briefing Brust", "heute Beine" or "what did I do last time" use `training_briefing`; for \
+progress of one exercise use `exercise_history`. Machine settings change via \
+`propose_gear_setting`. Present briefings as a compact list.\
 """
 
 # Signature of the per-request search function the chat endpoint provides (see ChatContext).
@@ -176,6 +186,84 @@ def get_agent() -> Agent[ChatContext, str]:
         if ctx.deps.db is None:
             return "Notes are not available."
         return await run_in_threadpool(search_notes, ctx.deps.db, query)
+
+    @agent.instructions
+    def today_instructions() -> str:
+        return f"Today is {training_tools.today():%A, %Y-%m-%d} ({settings.timezone})."
+
+    @agent.tool
+    async def training_briefing(ctx: RunContext[ChatContext], focus: str = "") -> str:
+        """Training plan for a focus with last weights × sets, machine settings and warnings.
+
+        Args:
+            focus: e.g. "Brust", "Rücken", "Beine"; empty for an overview of all focuses.
+        """
+        if ctx.deps.db is None:
+            return "Training data is not available."
+        return await run_in_threadpool(training_service.training_overview, ctx.deps.db, focus)
+
+    @agent.tool
+    async def exercise_history(ctx: RunContext[ChatContext], exercise: str) -> str:
+        """The latest entries (date, weight × sets) of one exercise, newest first.
+
+        Args:
+            exercise: Exercise name or abbreviation.
+        """
+        db = ctx.deps.db
+        if db is None:
+            return "Training data is not available."
+        found = await run_in_threadpool(training_service.resolve_exercise, db, exercise)
+        if found is None:
+            suggestions = await run_in_threadpool(training_service.suggest_exercises, db, exercise)
+            raise ModelRetry(f"Unknown exercise '{exercise}'. Did you mean: {suggestions}?")
+        return await run_in_threadpool(training_service.exercise_history, db, found)
+
+    @agent.tool
+    async def propose_training_log(
+        ctx: RunContext[ChatContext],
+        entries: list[TrainingEntryInput],
+        date: str | None = None,
+        notes: str | None = None,
+    ) -> str:
+        """Propose logging a workout. Nothing is saved until the user confirms it in the app.
+
+        Args:
+            entries: The exercises with weight (and sets only if the user gave them).
+            date: Workout date as YYYY-MM-DD; omit for today.
+            notes: Optional remarks, e.g. "aborted after butterfly" or "shoulder hurt".
+        """
+        db = ctx.deps.db
+        if db is None:
+            return "Saving is not available in this context."
+        try:
+            day = training_tools.parse_day(date)
+            payload = await run_in_threadpool(
+                training_tools.build_training_proposal, db, entries, day, notes
+            )
+        except (ValueError, ValidationError) as error:  # incl. UnknownExerciseError
+            raise ModelRetry(str(error)) from error
+        return await propose_action(ctx.deps, "log_training", payload)
+
+    @agent.tool
+    async def propose_gear_setting(
+        ctx: RunContext[ChatContext], exercise: str, setting: str
+    ) -> str:
+        """Propose changing the machine setting of an exercise (e.g. "Stufe 7"). Needs confirmation.
+
+        Args:
+            exercise: Exercise name or abbreviation.
+            setting: The new setting; empty string removes it.
+        """
+        db = ctx.deps.db
+        if db is None:
+            return "Saving is not available in this context."
+        try:
+            payload = await run_in_threadpool(
+                training_tools.build_gear_proposal, db, exercise, setting
+            )
+        except (ValueError, ValidationError) as error:
+            raise ModelRetry(str(error)) from error
+        return await propose_action(ctx.deps, "update_gear_setting", payload)
 
     return agent
 

@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-ai-slim[anthropic]>=2.63.0",
     "pydantic-settings>=2.16.0",
     "sqlalchemy>=2.1.5",
+    "tzdata>=2026.5",
     "voyageai>=0.6.0",
 ]
 

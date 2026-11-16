@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # Shown as "environment" in Langfuse, so local and production traces can be told apart.
     app_env: str = "development"
 
+    # The owner's time zone: "today"/"yesterday" in the chat and training dates use it.
+    timezone: str = "Europe/Berlin"
+
     # Summarize older messages once a chat turn's input exceeds this many tokens.
     summary_trigger_tokens: int = 8_000
     # How many of the most recent messages always stay word for word.
