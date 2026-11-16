@@ -8,6 +8,7 @@ import { ApiError } from './client'
 export type ChatStreamEvent =
   | { event: 'start'; data: { conversation_id: number } }
   | { event: 'delta'; data: { text: string } }
+  | { event: 'tool'; data: { name: string; args: Record<string, unknown> } }
   | { event: 'done'; data: { message_id: number; input_tokens: number; output_tokens: number } }
   | { event: 'error'; data: { detail: string } }
 

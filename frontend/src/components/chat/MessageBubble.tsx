@@ -1,4 +1,5 @@
-import { Box, Flex, Spinner } from '@chakra-ui/react'
+import { Box, Flex, HStack, Spinner, Text } from '@chakra-ui/react'
+import { LuSearch } from 'react-icons/lu'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -9,13 +10,15 @@ type MessageBubbleProps = {
   content: string
   /** True while this answer is still being streamed in. */
   streaming?: boolean
+  /** Tool activity shown above an answer while it streams (e.g. a knowledge-base search). */
+  activities?: string[]
 }
 
 /**
  * One chat message. User messages: plain text in a bubble on the right.
  * Assistant messages: rendered Markdown (lists, code, tables) on the left.
  */
-export function MessageBubble({ role, content, streaming = false }: MessageBubbleProps) {
+export function MessageBubble({ role, content, streaming = false, activities = [] }: MessageBubbleProps) {
   if (role === 'user') {
     return (
       <Flex justify="flex-end">
@@ -28,6 +31,12 @@ export function MessageBubble({ role, content, streaming = false }: MessageBubbl
 
   return (
     <Box>
+      {activities.map((activity, index) => (
+        <HStack key={index} gap="2" color="fg.muted" fontSize="sm" mb="2">
+          <LuSearch />
+          <Text>{activity}</Text>
+        </HStack>
+      ))}
       {/* react-markdown never renders raw HTML from the text, so model output can't inject
           scripts into the page (XSS). */}
       <Prose maxW="full" color="fg" fontSize="md">

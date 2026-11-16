@@ -17,6 +17,14 @@ type PendingTurn = {
   answer: string
   /** True until the stream has ended (finished, failed or stopped). */
   streaming: boolean
+  /** What the assistant did along the way, e.g. "Searched knowledge base: “leg press”". */
+  activities: string[]
+}
+
+/** Human-readable label for a tool call shown above the answer. */
+function describeTool(name: string, args: Record<string, unknown>): string {
+  if (name === 'search_knowledge') return `Searched knowledge base: “${String(args.query ?? '')}”`
+  return `Used tool: ${name}`
 }
 
 type ChatViewProps = {
@@ -46,7 +54,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const send = async (text: string) => {
     const controller = new AbortController()
     abortRef.current = controller
-    setPending({ userText: text, answer: '', streaming: true })
+    setPending({ userText: text, answer: '', streaming: true, activities: [] })
     let id = conversationId
 
     try {
@@ -58,6 +66,9 @@ export function ChatView({ conversationId }: ChatViewProps) {
         } else if (event.event === 'delta') {
           const piece = event.data.text
           setPending((turn) => turn && { ...turn, answer: turn.answer + piece })
+        } else if (event.event === 'tool') {
+          const activity = describeTool(event.data.name, event.data.args)
+          setPending((turn) => turn && { ...turn, activities: [...turn.activities, activity] })
         } else if (event.event === 'error') {
           toaster.error({ title: 'No answer', description: event.data.detail })
         }
@@ -112,7 +123,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
           {pending && (
             <>
               <MessageBubble role="user" content={pending.userText} />
-              <MessageBubble role="assistant" content={pending.answer} streaming={pending.streaming} />
+              <MessageBubble
+                role="assistant"
+                content={pending.answer}
+                streaming={pending.streaming}
+                activities={pending.activities}
+              />
             </>
           )}
           <div ref={bottomRef} />
