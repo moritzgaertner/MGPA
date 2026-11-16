@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as TrainingRouteImport } from './routes/training'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
   path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotesRoute = NotesRouteImport.update({
@@ -50,6 +56,7 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
+  '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/knowledge'
+    | '/login'
     | '/notes'
     | '/training'
     | '/chat/$conversationId'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/knowledge'
+    | '/login'
     | '/notes'
     | '/training'
     | '/chat/$conversationId'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/knowledge'
+    | '/login'
     | '/notes'
     | '/training'
     | '/chat/$conversationId'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KnowledgeRoute: typeof KnowledgeRoute
+  LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
   TrainingRoute: typeof TrainingRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/knowledge'
       fullPath: '/knowledge'
       preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notes': {
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KnowledgeRoute: KnowledgeRoute,
+  LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
   TrainingRoute: TrainingRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,

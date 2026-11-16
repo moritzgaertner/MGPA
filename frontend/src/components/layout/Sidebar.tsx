@@ -1,7 +1,8 @@
-import { Box, Button, Flex, HStack, Stack, Text } from '@chakra-ui/react'
-import { Link, type LinkProps } from '@tanstack/react-router'
-import { LuBookOpen, LuDumbbell, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
+import { Box, Button, Flex, HStack, IconButton, Stack, Text } from '@chakra-ui/react'
+import { Link, type LinkProps, useNavigate } from '@tanstack/react-router'
+import { LuBookOpen, LuDumbbell, LuLogOut, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
 
+import { useLogout } from '@/api/auth'
 import { ColorModeButton } from '@/components/ui/color-mode'
 
 import { ConversationList } from './ConversationList'
@@ -61,8 +62,27 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <Text fontSize="xs" color="fg.muted">
           v0.1
         </Text>
-        <ColorModeButton />
+        <HStack gap="0">
+          <ColorModeButton />
+          <LogoutButton />
+        </HStack>
       </HStack>
     </Flex>
+  )
+}
+
+function LogoutButton() {
+  const logout = useLogout()
+  const navigate = useNavigate()
+  return (
+    <IconButton
+      aria-label="Sign out"
+      variant="ghost"
+      size="sm"
+      loading={logout.isPending}
+      onClick={() => logout.mutate(undefined, { onSettled: () => void navigate({ to: '/login' }) })}
+    >
+      <LuLogOut />
+    </IconButton>
   )
 }

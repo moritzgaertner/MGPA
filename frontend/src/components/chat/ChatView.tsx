@@ -82,6 +82,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
         }
       }
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        // Session expired: sign in again, then come back here.
+        void navigate({ to: '/login', search: { redirect: window.location.pathname } })
+        return
+      }
       if (!controller.signal.aborted) {
         const description = error instanceof ApiError ? error.message : 'Connection to the backend failed.'
         toaster.error({ title: 'Message not sent', description })

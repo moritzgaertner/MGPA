@@ -182,7 +182,15 @@ For every milestone:
   Beine"), exercise_history, propose_training_log (aliases, default sets, merges into the same
   day+focus session), propose_machine_settings (merge, "" removes). /training page: Plan (edit
   settings), Sessions (delete), Progress (Chakra charts).
-- [ ] Nutrition + body weight + habits — next.
+- [x] Login — done (live-verified). Single user: `cd backend && uv run python -m mgpa_backend.auth`
+  writes AUTH_USERNAME, AUTH_PASSWORD_HASH (argon2, single-quoted in .env because of "$") and
+  SESSION_SECRET. Starlette SessionMiddleware cookie `mgpa_session` (HttpOnly, SameSite=Lax,
+  Secure unless APP_ENV=development, 30 days). All routers except /auth and /health depend on
+  `require_user`. Lockout: 5 failures / 15 min per client IP — at deployment run uvicorn with
+  proxy headers (`--proxy-headers --forwarded-allow-ips`) so the IP is the real client, not Caddy.
+  Frontend: root `beforeLoad` checks /auth/me → /login?redirect=…; any 401 redirects to login.
+  The backend no longer starts without these settings — the owner must run the command once.
+- [ ] Nutrition — postponed by the owner (2026-11-16). Body weight + habits — not started.
 - [ ] At the very end: an interview course covering all building blocks of the codebase (owner
   request 2026-11-16).
 
