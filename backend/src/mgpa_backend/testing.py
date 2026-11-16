@@ -12,6 +12,20 @@ from mgpa_backend.config import get_settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
+TEST_USERNAME = "tester"
+TEST_PASSWORD = "correct horse battery staple"  # noqa: S105  (test-only credential)
+
+
+def use_test_credentials() -> None:
+    """Login settings for tests, independent of the owner's real .env. Environment variables
+    take precedence over .env, so these win."""
+    from argon2 import PasswordHasher
+
+    os.environ["AUTH_USERNAME"] = TEST_USERNAME
+    os.environ["AUTH_PASSWORD_HASH"] = PasswordHasher().hash(TEST_PASSWORD)
+    os.environ["SESSION_SECRET"] = "test-session-secret-not-used-in-production"  # noqa: S105
+    get_settings.cache_clear()
+
 
 def use_test_database() -> str:
     """Point DATABASE_URL at `<dev database>_test`, create it if needed, and migrate it.

@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # How much the model thinks before answering; "low" keeps chat fast and cheap.
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
+    # Login (single user). Set with `uv run python -m mgpa_backend.auth` — it stores only an
+    # argon2 hash of the password, never the password itself.
+    auth_username: str
+    auth_password_hash: SecretStr
+    # Signs the session cookie; anyone with it could forge a login, so keep it secret.
+    session_secret: SecretStr
+    session_max_age_days: int = 30
+
     # Embeddings for the knowledge base (Voyage AI). Without a key, ingestion and search fail
     # with a clear error; everything else keeps working.
     voyage_api_key: SecretStr | None = None

@@ -3,8 +3,9 @@
 from collections.abc import Iterator
 from pathlib import Path
 
-from mgpa_backend.testing import use_test_database
+from mgpa_backend.testing import use_test_credentials, use_test_database
 
+use_test_credentials()
 use_test_database()
 
 import pytest  # noqa: E402

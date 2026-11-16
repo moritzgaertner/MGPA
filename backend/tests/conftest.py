@@ -7,8 +7,9 @@ app is imported, because the app creates its database engine from DATABASE_URL a
 
 from collections.abc import Iterator
 
-from mgpa_backend.testing import use_test_database
+from mgpa_backend.testing import use_test_credentials, use_test_database
 
+use_test_credentials()
 use_test_database()
 
 # Imported only now, so the engine is created for the test database.
@@ -16,8 +17,10 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from mgpa_backend.auth import require_user  # noqa: E402
 from mgpa_backend.db import engine, get_db  # noqa: E402
 from mgpa_backend.main import app  # noqa: E402
+from mgpa_backend.testing import TEST_USERNAME  # noqa: E402
 
 
 @pytest.fixture
@@ -40,7 +43,18 @@ def db() -> Iterator[Session]:
 
 @pytest.fixture
 def client(db: Session) -> Iterator[TestClient]:
-    """HTTP test client whose endpoints use the rolled-back test session instead of a real one."""
+    """Logged-in HTTP test client whose endpoints use the rolled-back test session."""
+    app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[require_user] = lambda: TEST_USERNAME
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def anonymous_client(db: Session) -> Iterator[TestClient]:
+    """HTTP test client WITHOUT a session — for testing the login itself."""
     app.dependency_overrides[get_db] = lambda: db
     try:
         yield TestClient(app)

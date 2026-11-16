@@ -45,6 +45,9 @@ jobs:
       ANTHROPIC_API_KEY: ci-placeholder-not-a-real-key
       ANTHROPIC_MODEL: ci-placeholder-model
       EMBEDDING_MODEL: ci-placeholder-embedding-model
+      AUTH_USERNAME: ci
+      AUTH_PASSWORD_HASH: ci-placeholder-not-a-hash
+      SESSION_SECRET: ci-placeholder-session-secret
 
     steps:
       - name: Check out code
@@ -112,6 +115,9 @@ jobs:
       ANTHROPIC_API_KEY: ci-placeholder-not-a-real-key
       ANTHROPIC_MODEL: ci-placeholder-model
       EMBEDDING_MODEL: ci-placeholder-embedding-model
+      AUTH_USERNAME: ci
+      AUTH_PASSWORD_HASH: ci-placeholder-not-a-hash
+      SESSION_SECRET: ci-placeholder-session-secret
     steps:
       - name: Check out code
         uses: actions/checkout@v7
