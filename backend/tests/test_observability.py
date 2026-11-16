@@ -10,7 +10,7 @@ from pydantic_ai import ModelMessage
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from mgpa_backend import observability
-from mgpa_backend.agent import get_agent
+from mgpa_backend.agent import get_agent, make_claude_model
 from mgpa_backend.config import Settings
 
 
@@ -26,6 +26,12 @@ def make_settings(**overrides: Any) -> Settings:
 
 async def fake_stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
     yield "traced answer"
+
+
+def test_anthropic_sdk_spans_are_disabled() -> None:
+    # Pydantic AI already traces every model call; SDK spans on top would double-count cost.
+    client = make_claude_model().client
+    assert client.open_telemetry["traces"]["enabled"] is False
 
 
 def test_tracing_is_off_without_keys(monkeypatch: pytest.MonkeyPatch) -> None:

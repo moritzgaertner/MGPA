@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 
+from anthropic import AsyncAnthropic
 from pydantic_ai import (
     Agent,
     ModelMessage,
@@ -18,6 +19,22 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 
 from mgpa_backend.config import get_settings
 from mgpa_backend.models import Message, MessageRole
+
+
+def make_claude_model() -> AnthropicModel:
+    """The Claude model used by all agents. Model ID and API key come from the settings (.env).
+
+    The Anthropic SDK can emit its own OpenTelemetry spans; Pydantic AI already traces every
+    model call, so the SDK's spans are switched off — otherwise Langfuse counts each call twice.
+    """
+    settings = get_settings()
+    client = AsyncAnthropic(
+        api_key=settings.anthropic_api_key.get_secret_value(), open_telemetry=False
+    )
+    return AnthropicModel(
+        settings.anthropic_model, provider=AnthropicProvider(anthropic_client=client)
+    )
+
 
 INSTRUCTIONS = """\
 You are MGPA, a personal assistant for a single user: a master's student in Management & \
@@ -75,12 +92,8 @@ def render_summary(summary: str | None) -> str:
 def get_agent() -> Agent[ChatContext, str]:
     """Build the agent once. Model ID, API key and effort come from the settings (.env)."""
     settings = get_settings()
-    model = AnthropicModel(
-        settings.anthropic_model,
-        provider=AnthropicProvider(api_key=settings.anthropic_api_key.get_secret_value()),
-    )
     agent = Agent(
-        model,
+        make_claude_model(),
         deps_type=ChatContext,
         instructions=INSTRUCTIONS,
         model_settings=AnthropicModelSettings(

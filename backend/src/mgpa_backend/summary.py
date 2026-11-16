@@ -12,11 +12,11 @@ from functools import lru_cache
 
 from fastapi.concurrency import run_in_threadpool
 from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
-from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.models.anthropic import AnthropicModelSettings
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mgpa_backend.agent import make_claude_model
 from mgpa_backend.config import get_settings
 from mgpa_backend.models import Conversation, Message, MessageRole
 from mgpa_backend.observability import traced
@@ -38,13 +38,8 @@ Return only the summary, no preamble.\
 @lru_cache
 def get_summarizer() -> Agent[None, str]:
     """A separate, tool-less agent for summarizing. Same model settings as the chat agent."""
-    settings = get_settings()
-    model = AnthropicModel(
-        settings.anthropic_model,
-        provider=AnthropicProvider(api_key=settings.anthropic_api_key.get_secret_value()),
-    )
     return Agent(
-        model,
+        make_claude_model(),
         instructions=SUMMARY_INSTRUCTIONS,
         model_settings=AnthropicModelSettings(
             max_tokens=4_000,
