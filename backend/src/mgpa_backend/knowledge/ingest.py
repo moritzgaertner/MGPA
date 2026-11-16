@@ -1,6 +1,7 @@
 """Ingest one document: read it, chunk it, embed the chunks, store them. Called by Dagster."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -27,14 +28,15 @@ def embedding_input(document: Document, draft: ChunkDraft) -> str:
     return f"{header}\n\n{draft.content}"
 
 
-def pending_document_ids(db: Session) -> list[int]:
-    return list(
-        db.scalars(
-            select(Document.id)
-            .where(Document.status == DocumentStatus.PENDING)
-            .order_by(Document.id)
-        )
-    )
+def pending_documents(db: Session) -> list[tuple[int, datetime]]:
+    """(id, updated_at) of every document waiting for ingestion. updated_at changes on each
+    re-process, so (id, updated_at) identifies one ingestion request."""
+    rows = db.execute(
+        select(Document.id, Document.updated_at)
+        .where(Document.status == DocumentStatus.PENDING)
+        .order_by(Document.id)
+    ).all()
+    return [(row.id, row.updated_at) for row in rows]
 
 
 def ingest_document(db: Session, document_id: int, embedder: Embedder) -> int:

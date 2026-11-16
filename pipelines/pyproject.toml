@@ -1,0 +1,53 @@
+[project]
+name = "mgpa-pipelines"
+version = "0.1.0"
+description = "Dagster code location for MGPA: knowledge-base document ingestion"
+readme = "README.md"
+authors = [
+    { name = "Moritz Gärtner", email = "213279945+moritzgaertner@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "dagster>=1.13.30",
+    # Data model, settings and ingestion logic live in the backend package (single source).
+    "mgpa-backend",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "dagster-webserver>=1.13.30",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+]
+
+[tool.uv.sources]
+mgpa-backend = { path = "../backend", editable = true }
+
+# `dagster dev` loads the definitions from this module.
+[tool.dagster]
+module_name = "mgpa_pipelines.definitions"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+# Dagster itself still uses a Pydantic v1 compatibility API; not our code.
+filterwarnings = ["ignore::pydantic.warnings.PydanticDeprecatedSince20:dagster_shared"]

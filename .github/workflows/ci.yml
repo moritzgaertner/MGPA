@@ -87,6 +87,56 @@ jobs:
           uv run python -m mgpa_backend.export_openapi > /tmp/openapi.json
           diff -u ../frontend/src/api/openapi.json /tmp/openapi.json
 
+  pipelines:
+    name: Pipelines (lint, typecheck, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipelines
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18-trixie
+        env:
+          POSTGRES_USER: mgpa
+          POSTGRES_PASSWORD: mgpa
+          POSTGRES_DB: mgpa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mgpa -d mgpa"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://mgpa:mgpa@localhost:5432/mgpa
+      ANTHROPIC_API_KEY: ci-placeholder-not-a-real-key
+      ANTHROPIC_MODEL: ci-placeholder-model
+      EMBEDDING_MODEL: ci-placeholder-embedding-model
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.13.0"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy src tests
+
+      - name: Test
+        run: uv run pytest
+
   frontend:
     name: Frontend (lint, typecheck, build)
     runs-on: ubuntu-latest

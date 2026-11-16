@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from mgpa_backend.config import get_settings
-from mgpa_backend.knowledge.ingest import ingest_document, pending_document_ids
+from mgpa_backend.knowledge.ingest import ingest_document, pending_documents
 from mgpa_backend.knowledge.search import search_chunks
 from mgpa_backend.models import Chunk, Document, DocumentStatus
 from tests.fakes import FailingEmbedder, FakeEmbedder
@@ -107,7 +107,7 @@ def test_ingest_chunks_embeds_and_marks_ready(client: TestClient, db: Session) -
     document_id = int(str(upload(client, "plan.md", PLAN)["id"]))
     embedder = FakeEmbedder()
 
-    assert document_id in pending_document_ids(db)
+    assert document_id in [i for i, _ in pending_documents(db)]
     count = ingest_document(db, document_id, embedder)
 
     document = db.get_one(Document, document_id)
@@ -115,7 +115,7 @@ def test_ingest_chunks_embeds_and_marks_ready(client: TestClient, db: Session) -
     assert [c.heading for c in document.chunks] == ["Plan › Day A", "Plan › Day B"]
     # The embedded text carries its source as context.
     assert embedder.document_calls[0][1].startswith("plan.md › Plan › Day B")
-    assert document_id not in pending_document_ids(db)
+    assert document_id not in [i for i, _ in pending_documents(db)]
 
 
 def test_failed_ingestion_is_recorded(client: TestClient, db: Session) -> None:
