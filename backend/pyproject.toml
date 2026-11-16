@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
     "fastapi[standard]>=0.149.0",
+    "langfuse>=5.2.0",
     "psycopg[binary]>=3.3.6",
     "pydantic-ai-slim[anthropic]>=2.63.0",
     "pydantic-settings>=2.16.0",
@@ -38,7 +39,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 # `assert` is the normal way to write pytest tests
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S105", "S106"]  # asserts and fake test secrets are fine in tests
 
 [tool.mypy]
 strict = true

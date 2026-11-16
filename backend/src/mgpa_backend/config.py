@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # How much the model thinks before answering; "low" keeps chat fast and cheap.
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
+    # Langfuse tracing (observability). Leave the keys empty to disable tracing (tests, CI).
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_base_url: str = "https://cloud.langfuse.com"  # EU region
+    # Shown as "environment" in Langfuse, so local and production traces can be told apart.
+    app_env: str = "development"
+
     # Summarize older messages once a chat turn's input exceeds this many tokens.
     summary_trigger_tokens: int = 8_000
     # How many of the most recent messages always stay word for word.

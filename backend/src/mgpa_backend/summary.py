@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from mgpa_backend.config import get_settings
 from mgpa_backend.models import Conversation, Message, MessageRole
+from mgpa_backend.observability import traced
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,8 @@ async def summarize_if_needed(db: Session, conversation_id: int, input_tokens: i
             f"Previous summary:\n{plan.previous_summary or '(none)'}\n\n"
             f"Next part of the transcript:\n{plan.transcript}"
         )
-        result = await get_summarizer().run(prompt)
+        with traced("summary", conversation_id, tags=["summary"]):
+            result = await get_summarizer().run(prompt)
         await run_in_threadpool(
             _save_summary, db, conversation_id, result.output, plan.last_folded_id
         )
