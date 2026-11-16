@@ -9,7 +9,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from mgpa_backend.models import MessageRole
+from mgpa_backend.models import DocumentStatus, MessageRole
 
 # Pinned notes are sent with every chat turn, so their size directly drives token cost.
 NOTE_CONTENT_MAX_CHARS = 10_000
@@ -93,6 +93,29 @@ class NoteRead(BaseModel):
     is_pinned: bool
     created_at: datetime
     updated_at: datetime
+
+
+class DocumentRead(BaseModel):
+    """A knowledge-base document as shown in the UI (no internal storage details)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    filename: str
+    media_type: str
+    size_bytes: int
+    status: DocumentStatus
+    error: str | None
+    chunk_count: int | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DocumentTextCreate(BaseModel):
+    """Request body for POST /documents/text: pasted text becomes a Markdown document."""
+
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=500_000)
 
 
 class ChatRequest(BaseModel):

@@ -28,3 +28,6 @@ tmp*/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Uploaded knowledge-base documents (local storage)
+data/

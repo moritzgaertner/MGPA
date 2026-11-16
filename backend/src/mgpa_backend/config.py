@@ -1,16 +1,20 @@
 """Application settings, read from environment variables (and the repo-root .env file locally)."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# backend/src/mgpa_backend/config.py -> repository root
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
-    # Locally the backend runs from backend/, so the shared .env lives one level up.
+    # The shared .env lives in the repo root (the backend and the Dagster pipelines both read it).
     # In Docker, values come from real environment variables, which always take precedence.
-    model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
 
     database_url: str
 
@@ -20,6 +24,14 @@ class Settings(BaseSettings):
     anthropic_model: str
     # How much the model thinks before answering; "low" keeps chat fast and cheap.
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+
+    # Embeddings for the knowledge base (Voyage AI). Without a key, ingestion and search fail
+    # with a clear error; everything else keeps working.
+    voyage_api_key: SecretStr | None = None
+    # Never hardcoded: e.g. "voyage-4". Must produce EMBEDDING_DIMENSIONS-sized vectors.
+    embedding_model: str
+    # Where uploaded documents are stored. Shared by the API (writes) and Dagster (reads).
+    documents_dir: Path = REPO_ROOT / "data" / "documents"
 
     # Langfuse tracing (observability). Leave the keys empty to disable tracing (tests, CI).
     langfuse_public_key: str | None = None

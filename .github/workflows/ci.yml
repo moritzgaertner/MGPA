@@ -44,6 +44,7 @@ jobs:
       # Placeholders only: tests replace Claude with a fake model, CI never calls the API.
       ANTHROPIC_API_KEY: ci-placeholder-not-a-real-key
       ANTHROPIC_MODEL: ci-placeholder-model
+      EMBEDDING_MODEL: ci-placeholder-embedding-model
 
     steps:
       - name: Check out code

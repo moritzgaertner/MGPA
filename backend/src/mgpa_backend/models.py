@@ -3,7 +3,19 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text, false, func
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mgpa_backend.db import Base
@@ -103,7 +115,11 @@ class Task(TimestampMixin, Base):
     is_done: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
-# --- Knowledge base (ingestion in M4; chunks table follows with the embedding model) ------------
+# --- Knowledge base (ingested by the Dagster pipeline in /pipelines) ----------------------------
+
+# Vector size of the embedding model (Voyage voyage-4 family at output_dimension=1024).
+# Changing it requires a migration AND re-embedding every chunk.
+EMBEDDING_DIMENSIONS = 1024
 
 
 class DocumentStatus(StrEnum):
@@ -116,7 +132,7 @@ class DocumentStatus(StrEnum):
 
 
 class Document(TimestampMixin, Base):
-    """An uploaded Markdown / plain-text file. The file itself lives on disk, not in the database."""
+    """An uploaded Markdown or plain-text file. The file itself lives on disk, not in the DB."""
 
     __tablename__ = "documents"
 
@@ -137,3 +153,43 @@ class Document(TimestampMixin, Base):
     )
     # Error message if status == failed, so the UI can show why.
     error: Mapped[str | None] = mapped_column(Text)
+    # Number of chunks once ingested (null until then).
+    chunk_count: Mapped[int | None]
+
+    chunks: Mapped[list["Chunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="Chunk.chunk_index",
+    )
+
+
+class Chunk(Base):
+    """A searchable piece of a document: its text, where it came from, and its embedding."""
+
+    __tablename__ = "chunks"
+    __table_args__ = (
+        # Each position exists once per document.
+        UniqueConstraint("document_id", "chunk_index"),
+        # Approximate nearest-neighbour index (HNSW) for cosine similarity searches.
+        Index(
+            "ix_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+    # Position within the document (0, 1, 2, ...), for ordering and citations.
+    chunk_index: Mapped[int]
+    # Markdown heading path, e.g. "Training › Day B" — shown in citations. Null for plain text.
+    heading: Mapped[str | None] = mapped_column(String(500))
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    document: Mapped[Document] = relationship(back_populates="chunks")

@@ -11,10 +11,12 @@ dependencies = [
     "alembic>=1.20.0",
     "fastapi[standard]>=0.149.0",
     "langfuse>=5.2.0",
+    "pgvector>=0.5.1",
     "psycopg[binary]>=3.3.6",
     "pydantic-ai-slim[anthropic]>=2.63.0",
     "pydantic-settings>=2.16.0",
     "sqlalchemy>=2.1.5",
+    "voyageai>=0.6.0",
 ]
 
 [build-system]

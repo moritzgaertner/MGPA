@@ -27,6 +27,7 @@ def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@localhost:5432/db")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("ANTHROPIC_MODEL", "some-model-id")
+    monkeypatch.setenv("EMBEDDING_MODEL", "some-embedding-model")
 
     settings = Settings(_env_file=None)  # type: ignore[call-arg]  # ignore any local .env
 

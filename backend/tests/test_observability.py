@@ -19,6 +19,7 @@ def make_settings(**overrides: Any) -> Settings:
         "database_url": "postgresql+psycopg://u:p@localhost:5432/db",
         "anthropic_api_key": "sk-ant-test",
         "anthropic_model": "test-model",
+        "embedding_model": "test-embedding-model",
         **overrides,
     }
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]
