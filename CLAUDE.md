@@ -163,6 +163,20 @@ For every milestone:
   migrations with pgvector need `from pgvector.sqlalchemy import Vector` added by hand.
 - [ ] M5 Tools + HITL — next.
 
+## Re-prioritisation (owner, 2026-11-16) — takes precedence over the milestone order above
+Goal: daily phone use for training, nutrition, body weight and quick notes, via the chat in the
+MGPA web app (installable on the home screen). **No Telegram.** The backend runs on a small
+server (Hetzner, ~4–5 €/month; owner rents it, Claude sets it up) — phones can't run the stack.
+Order: M5 proposals-with-confirmation (first: quick notes) → deployment (Hetzner, Docker Compose,
+Caddy HTTPS, single-user login, PWA) → training → nutrition + body weight + habits →
+later: Temporal (keep for the portfolio), applications tracker, evals.
+Decisions: nutrition = free-text meal, Claude estimates kcal + protein, owner confirms; daily totals
++ weekly trend. Training = weight × sets per exercise (same as the Excel, no reps); current shoulder
+exercise is "Schulterdrücken Kurzhantel". Import the Excel training history (+ gear settings from
+CONTEXT.md) and habits.json from `C:\Users\morit\OneDrive\Desktop\Zeug\08_Training`.
+Still needed from the owner later: Hetzner server + domain choice (before deployment), optional
+daily kcal/protein targets (before nutrition).
+
 ## Planned extension: M5b Training tracker (after M5, owner request 2026-10-30)
 The owner runs a separate training tracker (Excel `Training_Tracker.xlsx`, Streamlit dashboard,
 Telegram bot with Haiku parsing + confirm buttons, `habits.json`) in
@@ -184,7 +198,7 @@ reminders in the daily briefing (M6). Dashboards: one page per domain, no generi
 builder. Charts: evaluate Chakra's chart package (Recharts-based, follows dark mode) when the first
 dashboard is built.
 
-## Planned extension: Telegram channel (after M7 deployment, owner request 2026-10-30)
+## ~~Planned extension: Telegram channel~~ — dropped by the owner on 2026-11-16 (chat in the app instead)
 Telegram as a second client of the same backend ("channel-agnostic core"): a thin bot container
 on the VPS forwards messages to the MGPA API and maps HITL confirmations to inline buttons
 (✅/❌). No business logic in the bot. Only the owner's Telegram user ID is allowed; bot token
