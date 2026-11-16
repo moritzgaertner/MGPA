@@ -144,3 +144,32 @@ Every agent run is traced with OpenTelemetry into Langfuse, so for each answer I
 prompt — system prompt, pinned notes, history — plus tokens, cost and latency, grouped per
 conversation. That's how I found that every call was being counted twice: two layers were both
 instrumenting the model call, and I disabled the redundant one and locked that in with a test.
+
+## M4 — Knowledge base (RAG)
+
+**Built:** upload of Markdown/text files or pasted text (no PDF — deliberate scope cut), a Dagster
+pipeline (sensor → one dynamic partition per document → asset that chunks, embeds with Voyage
+`voyage-4` and stores in pgvector with an HNSW index), an agent tool `search_knowledge` with source
+citations, and a `/knowledge` page with live status. Chat streaming moved to `run_stream_events`.
+
+**Learned**
+- *RAG* — answer from retrieved passages instead of model memory: chunk → embed → nearest
+  neighbours by cosine similarity → passages + sources into the prompt → cited answer.
+- *Chunking* — Markdown headings give each chunk a "where am I" path (`plan.md › Day B`), used both
+  for the embedding input and for citations.
+- *Embedding choice is sticky* — the vector size is in the schema; switching models means
+  re-embedding everything. Documents vs. queries are embedded with different `input_type`.
+- *Orchestration* — Dagster sensor + run keys (`id@updated_at`) make ingestion idempotent; a
+  re-process bumps `updated_at` and so starts a new run.
+- *Tool calls and streaming* — `run_stream` ends at the first text, so "Let me check…" + tool call
+  would silently skip the tool; `run_stream_events` streams text and tool events across the run.
+- *Failure states must be visible* — a live run showed a setup error left documents `pending`
+  forever; every failure path now sets `failed` + reason (regression test).
+- *Security* — files are stored under their SHA-256, never the client-supplied name.
+
+**Interview: "How does your RAG pipeline work, and why Dagster?"**
+Uploads only store the file and a `pending` row; a Dagster sensor turns each pending document into a
+partition of an asset that chunks it along Markdown headings, embeds the chunks with Voyage and
+writes them to pgvector. The chat agent has a `search_knowledge` tool that embeds the question, does
+a cosine nearest-neighbour search and returns passages with their source, which Claude cites. Dagster
+gives me per-document lineage, run history and re-materialisation, which a cron script wouldn't.
