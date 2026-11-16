@@ -2,6 +2,7 @@ import { Badge, Button, Card, HStack, Stack, Text } from '@chakra-ui/react'
 import { LuCheck, LuX } from 'react-icons/lu'
 
 import { type Action, useDecideAction } from '@/api/actions'
+import { formatAmount } from '@/components/training/format'
 import { toaster } from '@/components/ui/toaster'
 
 type ActionCardProps = {
@@ -10,10 +11,36 @@ type ActionCardProps = {
 
 /** Short preview of what will be written, per action kind. */
 function PayloadPreview({ action }: ActionCardProps) {
+  const payload = action.payload
   if (action.kind === 'create_note') {
     return (
       <Text fontSize="sm" color="fg.muted" whiteSpace="pre-wrap" lineClamp={6}>
-        {String(action.payload.content ?? '')}
+        {String(payload.content ?? '')}
+      </Text>
+    )
+  }
+  if (action.kind === 'log_training') {
+    const entries = (payload.entries ?? []) as { exercise: string; weight: number; sets: number; unit: string }[]
+    return (
+      <Stack gap="0.5" fontSize="sm">
+        {entries.map((entry, index) => (
+          <HStack key={index} justify="space-between">
+            <Text>{entry.exercise}</Text>
+            <Text color="fg.muted">{formatAmount(entry.weight, entry.sets, entry.unit)}</Text>
+          </HStack>
+        ))}
+        {typeof payload.notes === 'string' && payload.notes && (
+          <Text color="fg.muted" mt="1">
+            {payload.notes}
+          </Text>
+        )}
+      </Stack>
+    )
+  }
+  if (action.kind === 'update_gear_setting') {
+    return (
+      <Text fontSize="sm" color="fg.muted">
+        {String(payload.old_setting ?? '—')} → {String(payload.new_setting ?? '—')}
       </Text>
     )
   }

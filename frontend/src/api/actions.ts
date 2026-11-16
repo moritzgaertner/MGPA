@@ -4,6 +4,7 @@ import { api, unwrap } from './client'
 import { conversationKeys } from './conversations'
 import { noteKeys } from './notes'
 import type { components } from './schema'
+import { trainingKeys } from './training'
 
 export type Action = components['schemas']['ActionRead']
 
@@ -21,6 +22,7 @@ export function useDecideAction() {
       // The card's status lives in the conversation; a confirmed note shows up on /notes.
       void queryClient.invalidateQueries({ queryKey: conversationKeys.all })
       void queryClient.invalidateQueries({ queryKey: noteKeys.all })
+      void queryClient.invalidateQueries({ queryKey: trainingKeys.all })
     },
   })
 }

@@ -1,6 +1,6 @@
 import { Box, Button, Flex, HStack, Stack, Text } from '@chakra-ui/react'
 import { Link, type LinkProps } from '@tanstack/react-router'
-import { LuBookOpen, LuListTodo, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
+import { LuBookOpen, LuDumbbell, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
 
 import { ColorModeButton } from '@/components/ui/color-mode'
 
@@ -9,9 +9,9 @@ import { ConversationList } from './ConversationList'
 // Main sections of the app. `to` is type-checked against the routes in src/routes.
 const NAV_ITEMS: { label: string; to: LinkProps['to']; icon: typeof LuMessageSquare }[] = [
   { label: 'Chat', to: '/chat', icon: LuMessageSquare },
+  { label: 'Training', to: '/training', icon: LuDumbbell },
   { label: 'Notes', to: '/notes', icon: LuStickyNote },
   { label: 'Knowledge', to: '/knowledge', icon: LuBookOpen },
-  { label: 'Tasks', to: '/tasks', icon: LuListTodo },
 ]
 
 type SidebarProps = {

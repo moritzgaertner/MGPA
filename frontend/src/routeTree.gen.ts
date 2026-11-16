@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as NotesRouteImport } from './routes/notes'
-import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TrainingRouteImport } from './routes/training'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
 
@@ -31,9 +31,9 @@ const NotesRoute = NotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
+const TrainingRoute = TrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
@@ -51,7 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
   '/notes': typeof NotesRoute
-  '/tasks': typeof TasksRoute
+  '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -59,7 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
   '/notes': typeof NotesRoute
-  '/tasks': typeof TasksRoute
+  '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -68,7 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/knowledge': typeof KnowledgeRoute
   '/notes': typeof NotesRoute
-  '/tasks': typeof TasksRoute
+  '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -78,18 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/knowledge'
     | '/notes'
-    | '/tasks'
+    | '/training'
     | '/chat/$conversationId'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/knowledge' | '/notes' | '/tasks' | '/chat/$conversationId' | '/chat'
+    | '/'
+    | '/knowledge'
+    | '/notes'
+    | '/training'
+    | '/chat/$conversationId'
+    | '/chat'
   id:
     | '__root__'
     | '/'
     | '/knowledge'
     | '/notes'
-    | '/tasks'
+    | '/training'
     | '/chat/$conversationId'
     | '/chat/'
   fileRoutesById: FileRoutesById
@@ -98,7 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KnowledgeRoute: typeof KnowledgeRoute
   NotesRoute: typeof NotesRoute
-  TasksRoute: typeof TasksRoute
+  TrainingRoute: typeof TrainingRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
 }
@@ -126,11 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
+    '/training': {
+      id: '/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof TrainingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat/': {
@@ -154,7 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KnowledgeRoute: KnowledgeRoute,
   NotesRoute: NotesRoute,
-  TasksRoute: TasksRoute,
+  TrainingRoute: TrainingRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   ChatIndexRoute: ChatIndexRoute,
 }
