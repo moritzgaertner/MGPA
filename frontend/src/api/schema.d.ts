@@ -192,6 +192,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/actions/{action_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Action
+         * @description Execute the proposal (e.g. actually save the note).
+         */
+        post: operations["confirm_action_actions__action_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/actions/{action_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Action
+         * @description Discard the proposal; nothing is written.
+         */
+        post: operations["reject_action_actions__action_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -236,6 +276,37 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActionRead
+         * @description A proposed write action and its outcome (shown as a card under the message).
+         */
+        ActionRead: {
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            status: components["schemas"]["ActionStatus"];
+            /** Result Summary */
+            result_summary: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+        };
+        /**
+         * ActionStatus
+         * @enum {string}
+         */
+        ActionStatus: "proposed" | "confirmed" | "rejected";
         /** Body_upload_document_documents_post */
         Body_upload_document_documents_post: {
             /** File */
@@ -374,6 +445,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Actions
+             * @default []
+             */
+            actions: components["schemas"]["ActionRead"][];
         };
         /**
          * MessageRole
@@ -936,6 +1012,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_action_actions__action_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_action_actions__action_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionRead"];
+                };
             };
             /** @description Validation Error */
             422: {

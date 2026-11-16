@@ -9,7 +9,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from mgpa_backend.models import DocumentStatus, MessageRole
+from mgpa_backend.models import ActionStatus, DocumentStatus, MessageRole
 
 # Pinned notes are sent with every chat turn, so their size directly drives token cost.
 NOTE_CONTENT_MAX_CHARS = 10_000
@@ -27,6 +27,21 @@ class ConversationUpdate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
 
 
+class ActionRead(BaseModel):
+    """A proposed write action and its outcome (shown as a card under the message)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str
+    label: str
+    payload: dict[str, Any]
+    status: ActionStatus
+    result_summary: str | None
+    created_at: datetime
+    decided_at: datetime | None
+
+
 class MessageRead(BaseModel):
     """One message as returned by the API."""
 
@@ -37,6 +52,8 @@ class MessageRead(BaseModel):
     role: MessageRole
     content: str
     created_at: datetime
+    # Proposals made in this message (assistant messages only).
+    actions: list[ActionRead] = []
 
 
 class ConversationRead(BaseModel):
@@ -145,6 +162,12 @@ class ChatToolEvent(BaseModel):
 
     name: str
     args: dict[str, Any]
+
+
+class ChatProposalEvent(BaseModel):
+    """event: proposal — the assistant proposes a write action; the user confirms or discards."""
+
+    action: ActionRead
 
 
 class ChatDoneEvent(BaseModel):

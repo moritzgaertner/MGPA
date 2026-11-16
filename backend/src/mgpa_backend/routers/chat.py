@@ -31,12 +31,14 @@ from mgpa_backend.agent import (
 from mgpa_backend.db import DbSession
 from mgpa_backend.knowledge.embeddings import get_embedder
 from mgpa_backend.knowledge.search import SearchHit, search_chunks
-from mgpa_backend.models import Conversation, Message, MessageRole, Note
+from mgpa_backend.models import Action, Conversation, Message, MessageRole, Note
 from mgpa_backend.observability import traced
 from mgpa_backend.schemas import (
+    ActionRead,
     ChatDeltaEvent,
     ChatDoneEvent,
     ChatErrorEvent,
+    ChatProposalEvent,
     ChatRequest,
     ChatStartEvent,
     ChatToolEvent,
@@ -111,6 +113,13 @@ def _save_answer(db: Session, conversation_id: int, text: str) -> int:
     """Persist the assistant's complete answer and bump the conversation's updated_at."""
     message = Message(conversation_id=conversation_id, role=MessageRole.ASSISTANT, content=text)
     db.add(message)
+    db.flush()
+    # Attach the proposals made during this answer to it, so they render under it after reload.
+    db.execute(
+        update(Action)
+        .where(Action.conversation_id == conversation_id, Action.message_id.is_(None))
+        .values(message_id=message.id)
+    )
     db.execute(
         update(Conversation).where(Conversation.id == conversation_id).values(updated_at=func.now())
     )
@@ -141,6 +150,8 @@ async def chat(
     """
     yield ServerSentEvent(data=ChatStartEvent(conversation_id=turn.conversation_id), event="start")
     turn.context.search_knowledge = make_knowledge_search(db)
+    turn.context.db = db
+    turn.context.conversation_id = turn.conversation_id
 
     parts: list[str] = []
     usage: RunUsage | None = None
@@ -150,6 +161,13 @@ async def chat(
                 turn.prompt, message_history=turn.history, deps=turn.context
             ) as events:
                 async for event in events:
+                    # Proposals stored by a tool since the last event: show them right away.
+                    while turn.context.new_proposals:
+                        action = turn.context.new_proposals.pop(0)
+                        yield ServerSentEvent(
+                            data=ChatProposalEvent(action=ActionRead.model_validate(action)),
+                            event="proposal",
+                        )
                     if isinstance(event, PartStartEvent) and isinstance(event.part, TextPart):
                         # A new text block (e.g. after a tool call): separate it from the last.
                         piece = ("\n\n" if parts else "") + event.part.content

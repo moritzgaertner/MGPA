@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -16,6 +17,7 @@ from sqlalchemy import (
     false,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mgpa_backend.db import Base
@@ -83,6 +85,53 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
+    # Proposals the assistant made in this message (shown as confirm/discard cards).
+    actions: Mapped[list["Action"]] = relationship(
+        back_populates="message", passive_deletes=True, order_by="Action.id"
+    )
+
+
+# --- Human-in-the-loop actions -----------------------------------------------------------------
+
+
+class ActionStatus(StrEnum):
+    PROPOSED = "proposed"  # waiting for the user
+    CONFIRMED = "confirmed"  # executed
+    REJECTED = "rejected"  # discarded by the user
+
+
+class Action(Base):
+    """A write action the assistant proposed (e.g. "save note X"). Nothing is written until the
+    user confirms; then the backend executes it directly (see actions.py)."""
+
+    __tablename__ = "actions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    # The assistant message that made the proposal (set once the answer is saved).
+    message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), index=True
+    )
+    # Action type, e.g. "create_note". A plain string (not a DB enum), so new action types
+    # need no migration — valid kinds are defined in code (actions.REGISTRY).
+    kind: Mapped[str] = mapped_column(String(50))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # Human-readable proposal, e.g. "Save note “Shopping list”".
+    label: Mapped[str] = mapped_column(String(300))
+    status: Mapped[ActionStatus] = mapped_column(
+        pg_enum(ActionStatus, "action_status"),
+        default=ActionStatus.PROPOSED,
+        server_default=ActionStatus.PROPOSED.value,
+    )
+    # What happened on confirm, e.g. "Note “Shopping list” saved", and the created row's id.
+    result_summary: Mapped[str | None] = mapped_column(Text)
+    result_id: Mapped[int | None]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    message: Mapped[Message | None] = relationship(back_populates="actions")
 
 
 # --- Notes & tasks (agent tools in M5) ----------------------------------------------------------

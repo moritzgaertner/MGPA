@@ -10,7 +10,7 @@ from sqlalchemy import text
 from mgpa_backend.config import get_settings
 from mgpa_backend.db import DbSession
 from mgpa_backend.observability import setup_tracing, shutdown_tracing
-from mgpa_backend.routers import chat, conversations, documents, notes
+from mgpa_backend.routers import actions, chat, conversations, documents, notes
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -28,6 +28,7 @@ app.include_router(conversations.router)
 app.include_router(chat.router)
 app.include_router(notes.router)
 app.include_router(documents.router)
+app.include_router(actions.router)
 
 
 @app.get("/health")

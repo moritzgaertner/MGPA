@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from mgpa_backend.db import DbSession
-from mgpa_backend.models import Conversation
+from mgpa_backend.models import Conversation, Message
 from mgpa_backend.schemas import (
     ConversationCreate,
     ConversationDetail,
@@ -50,9 +50,12 @@ def list_conversations(
 
 @router.get("/{conversation_id}")
 def get_conversation(conversation_id: int, db: DbSession) -> ConversationDetail:
-    # selectinload: fetch all messages in one extra query instead of lazily on first access
+    # selectinload: fetch all messages (and their proposals) in one extra query each,
+    # instead of lazily on first access (the N+1 problem).
     conversation = db.get(
-        Conversation, conversation_id, options=[selectinload(Conversation.messages)]
+        Conversation,
+        conversation_id,
+        options=[selectinload(Conversation.messages).selectinload(Message.actions)],
     )
     if conversation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")

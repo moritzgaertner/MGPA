@@ -5,22 +5,29 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from anthropic import AsyncAnthropic
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, ValidationError
 from pydantic_ai import (
     Agent,
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    ModelRetry,
     RunContext,
     TextPart,
     UserPromptPart,
 )
 from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
+from mgpa_backend import actions
+from mgpa_backend.actions import NoteProposal
 from mgpa_backend.config import get_settings
 from mgpa_backend.knowledge.embeddings import EmbeddingsNotConfiguredError
 from mgpa_backend.knowledge.search import SearchHit
-from mgpa_backend.models import Message, MessageRole
+from mgpa_backend.models import Action, Message, MessageRole, Note
 
 
 def make_claude_model() -> AnthropicModel:
@@ -47,7 +54,11 @@ If you don't know something, say so instead of guessing.
 The user keeps personal documents (notes, CV, application material, plans) in a knowledge base. \
 When a question may be answered by them, call `search_knowledge` before answering. Base such \
 answers on the returned passages and cite each one you use as *(Source: <source>)*. If the \
-passages don't contain the answer, say so.\
+passages don't contain the answer, say so.
+
+You cannot write data directly. To save something (e.g. "notier dir …", "merk dir …"), call a \
+`propose_*` tool: the user sees a card and confirms or discards it in the app. Never say that \
+something is saved — say it is ready to confirm. Use `find_notes` to look up saved notes.\
 """
 
 # Signature of the per-request search function the chat endpoint provides (see ChatContext).
@@ -73,6 +84,11 @@ class ChatContext:
     summary: str | None = None
     # Searches the knowledge base with the request's DB session (None = no knowledge base).
     search_knowledge: KnowledgeSearch | None = None
+    # The request's DB session and conversation, for tools that read notes or store proposals.
+    db: Session | None = None
+    conversation_id: int | None = None
+    # Proposals created during this run, not yet streamed to the client.
+    new_proposals: list[Action] = field(default_factory=list)
 
 
 def render_pinned_notes(notes: Sequence[PinnedNote]) -> str:
@@ -133,7 +149,63 @@ def get_agent() -> Agent[ChatContext, str]:
         """
         return await run_knowledge_search(ctx.deps.search_knowledge, query)
 
+    @agent.tool
+    async def propose_note(
+        ctx: RunContext[ChatContext], title: str, content: str, pinned: bool = False
+    ) -> str:
+        """Propose saving a note. Nothing is saved until the user confirms it in the app.
+
+        Args:
+            title: A short title (max 200 characters).
+            content: The note text, keeping the user's own wording.
+            pinned: True only if the user wants it pinned (included in every chat).
+        """
+        try:
+            payload = NoteProposal(title=title, content=content, is_pinned=pinned)
+        except ValidationError as error:
+            raise ModelRetry(f"Invalid note: {error}") from error
+        return await propose_action(ctx.deps, "create_note", payload)
+
+    @agent.tool
+    async def find_notes(ctx: RunContext[ChatContext], query: str) -> str:
+        """Find saved notes whose title or text contains the query (case-insensitive).
+
+        Args:
+            query: A word or phrase to look for; use "" to list the most recent notes.
+        """
+        if ctx.deps.db is None:
+            return "Notes are not available."
+        return await run_in_threadpool(search_notes, ctx.deps.db, query)
+
     return agent
+
+
+async def propose_action(deps: ChatContext, kind: str, payload: BaseModel) -> str:
+    """Store a proposal and queue it for the client. Returns the tool result for Claude."""
+    if deps.db is None or deps.conversation_id is None:
+        return "Saving is not available in this context."
+    action = await run_in_threadpool(actions.propose, deps.db, deps.conversation_id, kind, payload)
+    deps.new_proposals.append(action)
+    return (
+        f"Proposal #{action.id} ({action.label}) is shown to the user. "
+        "Nothing is saved until they confirm it."
+    )
+
+
+def search_notes(db: Session, query: str, limit: int = 10) -> str:
+    """Tool result listing matching notes, newest first."""
+    stmt = select(Note).order_by(Note.updated_at.desc(), Note.id.desc()).limit(limit)
+    if query.strip():
+        pattern = f"%{query.strip()}%"
+        stmt = stmt.where(or_(Note.title.ilike(pattern), Note.content.ilike(pattern)))
+    notes = db.scalars(stmt).all()
+    if not notes:
+        return "No notes found."
+    return "\n\n".join(
+        f"### {note.title}{' (pinned)' if note.is_pinned else ''} — "
+        f"updated {note.updated_at:%Y-%m-%d}\n{note.content}"
+        for note in notes
+    )
 
 
 async def run_knowledge_search(search: KnowledgeSearch | None, query: str) -> str:

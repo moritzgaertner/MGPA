@@ -681,6 +681,92 @@
         }
       }
     },
+    "/actions/{action_id}/confirm": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "summary": "Confirm Action",
+        "description": "Execute the proposal (e.g. actually save the note).",
+        "operationId": "confirm_action_actions__action_id__confirm_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actions/{action_id}/reject": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "summary": "Reject Action",
+        "description": "Discard the proposal; nothing is written.",
+        "operationId": "reject_action_actions__action_id__reject_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -730,6 +816,80 @@
   },
   "components": {
     "schemas": {
+      "ActionRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActionStatus"
+          },
+          "result_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "payload",
+          "status",
+          "result_summary",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "ActionRead",
+        "description": "A proposed write action and its outcome (shown as a card under the message)."
+      },
+      "ActionStatus": {
+        "type": "string",
+        "enum": [
+          "proposed",
+          "confirmed",
+          "rejected"
+        ],
+        "title": "ActionStatus"
+      },
       "Body_upload_document_documents_post": {
         "properties": {
           "file": {
@@ -1023,6 +1183,14 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/ActionRead"
+            },
+            "type": "array",
+            "title": "Actions",
+            "default": []
           }
         },
         "type": "object",
