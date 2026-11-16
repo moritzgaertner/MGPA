@@ -11,11 +11,13 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
     false,
     func,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -242,3 +244,73 @@ class Chunk(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     document: Mapped[Document] = relationship(back_populates="chunks")
+
+
+# --- Training ----------------------------------------------------------------------------------
+
+
+class Exercise(TimestampMixin, Base):
+    """An exercise in the training plan, incl. machine settings and abbreviations for parsing."""
+
+    __tablename__ = "exercises"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    # Training focus / day, e.g. "Brust", "Rücken", "Beine".
+    focus: Mapped[str] = mapped_column(String(50), index=True)
+    muscle: Mapped[str | None] = mapped_column(String(50))
+    kind: Mapped[str | None] = mapped_column(String(20))  # "Compound" / "Isolation"
+    # Order within its focus (1, 2, 3, ...), as in the training plan.
+    position: Mapped[int] = mapped_column(default=0, server_default="0")
+    # "kg" for weights; "min" for timed exercises like planks.
+    unit: Mapped[str] = mapped_column(String(10), default="kg", server_default="kg")
+    default_sets: Mapped[int] = mapped_column(default=3, server_default="3")
+    # Machine setting, e.g. "Stufe 6". Shown in the briefing.
+    gear_setting: Mapped[str | None] = mapped_column(Text)
+    # Warnings, e.g. "Verletzung – je nach Tag".
+    caution: Mapped[str | None] = mapped_column(Text)
+    # Abbreviations the user types, e.g. ["BP", "Brust Presse"].
+    aliases: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
+    # Inactive = no longer in the plan, kept for history.
+    is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
+
+
+class TrainingSession(Base):
+    """One workout on one day."""
+
+    __tablename__ = "training_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(Date, index=True)
+    focus: Mapped[str] = mapped_column(String(50))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    entries: Mapped[list["TrainingEntry"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="TrainingEntry.position",
+    )
+
+
+class TrainingEntry(Base):
+    """One exercise within a session: weight × sets (no reps — same as the owner's Excel)."""
+
+    __tablename__ = "training_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("training_sessions.id", ondelete="CASCADE"), index=True
+    )
+    # RESTRICT: an exercise with history can't be deleted, only deactivated.
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercises.id", ondelete="RESTRICT"), index=True
+    )
+    position: Mapped[int]
+    # kg (or minutes for timed exercises); Numeric keeps 22.5 exact, read back as float.
+    weight: Mapped[float] = mapped_column(Numeric(6, 2, asdecimal=False))
+    sets: Mapped[int]
+
+    session: Mapped[TrainingSession] = relationship(back_populates="entries")
+    exercise: Mapped[Exercise] = relationship()

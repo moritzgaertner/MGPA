@@ -166,7 +166,14 @@ For every milestone:
   `POST /actions/{id}/confirm|reject` executes via `actions.REGISTRY` (payload model + executor),
   no LLM call on confirm; 409 on double decision. Tools: `propose_note`, `find_notes`.
   New action kinds (training, meals, weight) = add to REGISTRY + a `propose_*` tool.
-- [ ] Deployment — next; blocked on the owner's server choice (see below).
+- [ ] Deployment — on the owner's EXISTING Hetzner server, which also hosts their "Wichtel" app
+  (rarely used, must keep running on its domain). Needs a shared reverse proxy (one process owns
+  80/443; route by hostname). Free hostname for MGPA (e.g. sslip.io-style) — owner only uses it as
+  a home-screen link. Before deploying, ask the owner for: `free -h; nproc; docker ps ...;
+  ss -tlnp | grep ':80 |:443 '` output and SSH access. If RAM ≤ 2 GB: run only the Dagster daemon.
+- [ ] Training — in progress (owner: "code first", deployment after).
+- [ ] At the very end: an interview course covering all building blocks of the codebase (owner
+  request 2026-11-16).
 
 ## Re-prioritisation (owner, 2026-11-16) — takes precedence over the milestone order above
 Goal: daily phone use for training, nutrition, body weight and quick notes, via the chat in the
