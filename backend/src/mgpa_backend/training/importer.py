@@ -30,7 +30,7 @@ class ExerciseSpec:
     kind: str | None = None
     muscle: str | None = None
     default_sets: int = 3
-    gear_setting: str | None = None
+    settings: dict[str, str] = field(default_factory=dict)
     cautions: list[str] = field(default_factory=list)
     aliases: list[str] = field(default_factory=list)
 
@@ -83,7 +83,7 @@ def parse_context(markdown: str) -> dict[str, ExerciseSpec]:
             specs[spec.name] = spec
         elif section.startswith("geräteeinstellungen") and len(cells) >= 2 and cells[0] in specs:
             spec = specs[cells[0]]
-            spec.gear_setting = None if _empty(cells[1]) else cells[1]
+            spec.settings = {} if _empty(cells[1]) else {"Einstellung": cells[1]}
             spec.cautions += [c.lstrip("⚠️ ").strip() for c in cells[2:] if not _empty(c)]
         elif section.startswith("abkürzungsschlüssel") and len(cells) >= 2 and cells[1] in specs:
             spec = specs[cells[1]]
@@ -151,7 +151,8 @@ def import_training(
         exercise.kind = spec.kind
         exercise.muscle = spec.muscle
         exercise.default_sets = spec.default_sets
-        exercise.gear_setting = spec.gear_setting
+        if not exercise.settings:  # never overwrite settings changed in MGPA since the import
+            exercise.settings = dict(spec.settings)
         exercise.caution = "; ".join(dict.fromkeys(spec.cautions)) or None
         exercise.aliases = list(dict.fromkeys(spec.aliases))
         exercise.unit = "min" if "plank" in spec.name.casefold() else "kg"

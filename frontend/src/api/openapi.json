@@ -1461,16 +1461,12 @@
             "type": "integer",
             "title": "Default Sets"
           },
-          "gear_setting": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gear Setting"
+          "settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Settings"
           },
           "caution": {
             "anyOf": [
@@ -1513,7 +1509,7 @@
           "kind",
           "unit",
           "default_sets",
-          "gear_setting",
+          "settings",
           "caution",
           "aliases",
           "last",
@@ -1523,17 +1519,20 @@
       },
       "ExerciseUpdate": {
         "properties": {
-          "gear_setting": {
+          "settings": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 500
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object",
+                "maxProperties": 20
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Gear Setting"
+            "title": "Settings"
           },
           "caution": {
             "anyOf": [

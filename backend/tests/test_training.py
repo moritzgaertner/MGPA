@@ -66,8 +66,8 @@ def test_parse_context_reads_plan_settings_and_aliases() -> None:
         "Compound",
         "Brust",
     )
-    assert press.gear_setting == "Stufe 3" and press.aliases == ["TP", "T Press"]
-    assert raise_.gear_setting is None and raise_.cautions == ["Schulter schonen"]
+    assert press.settings == {"Einstellung": "Stufe 3"} and press.aliases == ["TP", "T Press"]
+    assert raise_.settings == {} and raise_.cautions == ["Schulter schonen"]
     assert squat.default_sets == 2 and squat.focus == "Legday"
 
 

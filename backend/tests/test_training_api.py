@@ -65,10 +65,10 @@ def test_edit_gear_setting_directly(client: TestClient) -> None:
     press_id = next(e["id"] for p in plan for e in p["exercises"] if e["name"] == "Test Press")
 
     updated = client.patch(
-        f"/training/exercises/{press_id}", json={"gear_setting": " Stufe 5 "}
+        f"/training/exercises/{press_id}", json={"settings": {" Sitz ": " 5 ", "Leer": " "}}
     ).json()
 
-    assert updated["gear_setting"] == "Stufe 5"
+    assert updated["settings"] == {"Sitz": "5"}  # trimmed, empty values dropped
 
 
 def test_monthly_counts(client: TestClient) -> None:

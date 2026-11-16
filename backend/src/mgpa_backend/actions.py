@@ -54,11 +54,13 @@ class TrainingLogProposal(BaseModel):
     notes: str | None = Field(default=None, max_length=2_000)
 
 
-class GearSettingProposal(BaseModel):
+class MachineSettingsProposal(BaseModel):
+    """The complete settings of one machine after the change (old ones kept for the card)."""
+
     exercise_id: int
     exercise: str
-    old_setting: str | None
-    new_setting: str | None = Field(max_length=500)  # None = remove the setting
+    old_settings: dict[str, str]
+    new_settings: dict[str, str] = Field(max_length=20)
 
 
 # --- Executors: (db, payload) -> (id of the created row, human-readable result) ----------------
@@ -103,11 +105,19 @@ def _log_training(db: Session, payload: TrainingLogProposal) -> tuple[int, str]:
     )
 
 
-def _update_gear_setting(db: Session, payload: GearSettingProposal) -> tuple[int, str]:
+def format_settings(settings: dict[str, str]) -> str:
+    """{"Sitz": "4", "Knie": "3"} -> "Sitz: 4, Knie: 3"; a lone "Einstellung" is shown bare."""
+    if list(settings) == ["Einstellung"]:
+        return settings["Einstellung"]
+    return ", ".join(f"{name}: {value}" for name, value in settings.items())
+
+
+def _update_machine_settings(db: Session, payload: MachineSettingsProposal) -> tuple[int, str]:
     exercise = db.get_one(Exercise, payload.exercise_id)
-    exercise.gear_setting = payload.new_setting
+    exercise.settings = payload.new_settings
     db.flush()
-    return exercise.id, f"Setting for {exercise.name}: {payload.new_setting or 'removed'}"
+    summary = format_settings(payload.new_settings) or "none"
+    return exercise.id, f"Settings for {exercise.name}: {summary}"
 
 
 @dataclass(frozen=True)
@@ -128,10 +138,10 @@ REGISTRY: dict[str, ActionType] = {
         label=lambda p: f"Log training {p.focus} · {p.date:%d.%m.%Y} ({len(p.entries)} exercises)",
         execute=_log_training,
     ),
-    "update_gear_setting": ActionType(
-        payload_model=GearSettingProposal,
-        label=lambda p: f"Change setting for {p.exercise}",
-        execute=_update_gear_setting,
+    "update_machine_settings": ActionType(
+        payload_model=MachineSettingsProposal,
+        label=lambda p: f"Change settings for {p.exercise}",
+        execute=_update_machine_settings,
     ),
 }
 

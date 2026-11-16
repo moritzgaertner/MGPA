@@ -6,6 +6,7 @@ from typing import Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
+    JSON,
     Date,
     DateTime,
     Enum,
@@ -119,7 +120,8 @@ class Action(Base):
     # Action type, e.g. "create_note". A plain string (not a DB enum), so new action types
     # need no migration — valid kinds are defined in code (actions.REGISTRY).
     kind: Mapped[str] = mapped_column(String(50))
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # JSON (not JSONB) so key order survives, e.g. machine settings "Sitz, Knie, Fuß".
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     # Human-readable proposal, e.g. "Save note “Shopping list”".
     label: Mapped[str] = mapped_column(String(300))
     status: Mapped[ActionStatus] = mapped_column(
@@ -265,8 +267,10 @@ class Exercise(TimestampMixin, Base):
     # "kg" for weights; "min" for timed exercises like planks.
     unit: Mapped[str] = mapped_column(String(10), default="kg", server_default="kg")
     default_sets: Mapped[int] = mapped_column(default=3, server_default="3")
-    # Machine setting, e.g. "Stufe 6". Shown in the briefing.
-    gear_setting: Mapped[str | None] = mapped_column(Text)
+    # Named machine settings, e.g. {"Sitz": "4", "Knie": "3", "Fuß": "2"} or {"Einstellung":
+    # "Stufe 6"}. Named so the chat can change one value without retyping the others.
+    # JSON, not JSONB: JSONB re-sorts keys, JSON keeps the order the user gave (Sitz, Knie, Fuß).
+    settings: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, server_default="{}")
     # Warnings, e.g. "Verletzung – je nach Tag".
     caution: Mapped[str | None] = mapped_column(Text)
     # Abbreviations the user types, e.g. ["BP", "Brust Presse"].

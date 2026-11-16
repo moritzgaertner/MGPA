@@ -563,8 +563,10 @@ export interface components {
             unit: string;
             /** Default Sets */
             default_sets: number;
-            /** Gear Setting */
-            gear_setting: string | null;
+            /** Settings */
+            settings: {
+                [key: string]: string;
+            };
             /** Caution */
             caution: string | null;
             /** Aliases */
@@ -578,8 +580,10 @@ export interface components {
          * @description Direct edit from the UI; only the fields that are sent change.
          */
         ExerciseUpdate: {
-            /** Gear Setting */
-            gear_setting?: string | null;
+            /** Settings */
+            settings?: {
+                [key: string]: string;
+            } | null;
             /** Caution */
             caution?: string | null;
         };

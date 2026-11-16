@@ -32,7 +32,7 @@ class ExercisePlanRead(BaseModel):
     kind: str | None
     unit: str
     default_sets: int
-    gear_setting: str | None
+    settings: dict[str, str]
     caution: str | None
     aliases: list[str]
     last: LastValueRead | None
@@ -76,7 +76,8 @@ class MonthCount(BaseModel):
 class ExerciseUpdate(BaseModel):
     """Direct edit from the UI; only the fields that are sent change."""
 
-    gear_setting: str | None = Field(default=None, max_length=500)
+    # The complete new set of machine settings, e.g. {"Sitz": "4", "Knie": "3"}.
+    settings: dict[str, str] | None = Field(default=None, max_length=20)
     caution: str | None = Field(default=None, max_length=500)
 
 
@@ -108,7 +109,7 @@ def get_plan(db: DbSession) -> list[FocusPlanRead]:
                     kind=exercise.kind,
                     unit=exercise.unit,
                     default_sets=exercise.default_sets,
-                    gear_setting=exercise.gear_setting,
+                    settings=exercise.settings,
                     caution=exercise.caution,
                     aliases=exercise.aliases,
                     last=LastValueRead(date=value.date, weight=value.weight, sets=value.sets)
@@ -184,10 +185,17 @@ def update_exercise(exercise_id: int, body: ExerciseUpdate, db: DbSession) -> Ex
     exercise = db.get(Exercise, exercise_id)
     if exercise is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Exercise not found")
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(exercise, field, (value or "").strip() or None)
+    changes = body.model_dump(exclude_unset=True)
+    if "settings" in changes:
+        exercise.settings = {
+            name.strip(): str(value).strip()[:100]
+            for name, value in (changes["settings"] or {}).items()
+            if name.strip() and str(value).strip()
+        }
+    if "caution" in changes:
+        exercise.caution = (changes["caution"] or "").strip() or None
     db.commit()
-    return ExerciseUpdate(gear_setting=exercise.gear_setting, caution=exercise.caution)
+    return ExerciseUpdate(settings=exercise.settings, caution=exercise.caution)
 
 
 @router.get("/stats/monthly")

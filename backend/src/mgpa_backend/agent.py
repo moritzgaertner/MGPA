@@ -66,9 +66,12 @@ something is saved — say it is ready to confirm. Use `find_notes` to look up s
 Training: the user logs workouts in short form, e.g. "BP 77, Skull 35, KB 15" (weights in kg; \
 abbreviations are resolved by the tools; sets default to the exercise's usual number). Log them \
 with `propose_training_log` (date defaults to today; resolve "gestern" etc. yourself). For \
-"Briefing Brust", "heute Beine" or "what did I do last time" use `training_briefing`; for \
-progress of one exercise use `exercise_history`. Machine settings change via \
-`propose_gear_setting`. Present briefings as a compact list.\
+"Briefing Brust", "heute Rücken", "heute Beine" or "what did I do last time" use \
+`training_briefing` and present EVERY exercise in plan order with its last weight × sets and \
+ALL machine settings (e.g. "Sitz 4 · Knie 3"), plus warnings — as a compact list. For progress \
+of one exercise use `exercise_history`. Machines can have several named settings (e.g. \
+Beinbeuger: Sitz, Knie, Fuß); record or change them with `propose_machine_settings`, passing \
+only the settings the user mentioned.\
 """
 
 # Signature of the per-request search function the chat endpoint provides (see ChatContext).
@@ -245,25 +248,31 @@ def get_agent() -> Agent[ChatContext, str]:
         return await propose_action(ctx.deps, "log_training", payload)
 
     @agent.tool
-    async def propose_gear_setting(
-        ctx: RunContext[ChatContext], exercise: str, setting: str
+    async def propose_machine_settings(
+        ctx: RunContext[ChatContext],
+        exercise: str,
+        settings: dict[str, str],
+        replace: bool = False,
     ) -> str:
-        """Propose changing the machine setting of an exercise (e.g. "Stufe 7"). Needs confirmation.
+        """Propose recording or changing machine settings of an exercise. Needs confirmation.
 
         Args:
             exercise: Exercise name or abbreviation.
-            setting: The new setting; empty string removes it.
+            settings: Named settings, e.g. {"Sitz": "4", "Knie": "3", "Fuß": "2"}. Use
+                {"Einstellung": "..."} for a machine with a single setting. Only the given
+                names change, the others stay; an empty value removes that setting.
+            replace: True only if the user wants to replace ALL settings with the given ones.
         """
         db = ctx.deps.db
         if db is None:
             return "Saving is not available in this context."
         try:
             payload = await run_in_threadpool(
-                training_tools.build_gear_proposal, db, exercise, setting
+                training_tools.build_settings_proposal, db, exercise, settings, replace
             )
         except (ValueError, ValidationError) as error:
             raise ModelRetry(str(error)) from error
-        return await propose_action(ctx.deps, "update_gear_setting", payload)
+        return await propose_action(ctx.deps, "update_machine_settings", payload)
 
     return agent
 

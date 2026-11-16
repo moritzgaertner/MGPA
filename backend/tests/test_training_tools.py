@@ -127,20 +127,49 @@ def test_unknown_exercise_makes_the_model_retry_with_suggestions(client: TestCli
     assert isinstance(payload, dict) and payload["entries"][0]["exercise"] == "Test Press"
 
 
-def test_gear_setting_change_needs_confirmation(client: TestClient, db: Session) -> None:
-    action = proposal(run(client, "propose_gear_setting", {"exercise": "TP", "setting": "Stufe 4"}))
-
-    assert action["payload"] == {
-        "exercise_id": action["payload"]["exercise_id"],  # type: ignore[index]
-        "exercise": "Test Press",
-        "old_setting": "Stufe 3",
-        "new_setting": "Stufe 4",
-    }
-    assert db.query(Exercise).filter_by(name="Test Press").one().gear_setting == "Stufe 3"
-
-    client.post(f"/actions/{action['id']}/confirm")
+def settings_of(db: Session, name: str) -> dict[str, str]:
     db.expire_all()
-    assert db.query(Exercise).filter_by(name="Test Press").one().gear_setting == "Stufe 4"
+    return db.query(Exercise).filter_by(name=name).one().settings
+
+
+def confirm(client: TestClient, action: dict[str, object]) -> None:
+    assert client.post(f"/actions/{action['id']}/confirm").status_code == 200
+
+
+def test_settings_change_needs_confirmation(client: TestClient, db: Session) -> None:
+    args: dict[str, object] = {"exercise": "TP", "settings": {"Einstellung": "Stufe 4"}}
+    action = proposal(run(client, "propose_machine_settings", args))
+
+    payload = action["payload"]
+    assert isinstance(payload, dict)
+    assert payload["old_settings"] == {"Einstellung": "Stufe 3"}
+    assert payload["new_settings"] == {"Einstellung": "Stufe 4"}
+    assert settings_of(db, "Test Press") == {"Einstellung": "Stufe 3"}  # not before confirming
+
+    confirm(client, action)
+    assert settings_of(db, "Test Press") == {"Einstellung": "Stufe 4"}
+
+
+def test_machine_with_several_settings_and_partial_update(client: TestClient, db: Session) -> None:
+    # Record three settings for a machine that had none ...
+    args: dict[str, object] = {"exercise": "SQ", "settings": {"Sitz": "4", "Knie": "3", "Fuß": "2"}}
+    confirm(client, proposal(run(client, "propose_machine_settings", args)))
+    assert settings_of(db, "Test Squat") == {"Sitz": "4", "Knie": "3", "Fuß": "2"}
+
+    # ... then change just one: the others stay. An empty value removes a setting.
+    args = {"exercise": "SQ", "settings": {"Sitz": "5", "Fuß": ""}}
+    confirm(client, proposal(run(client, "propose_machine_settings", args)))
+    assert settings_of(db, "Test Squat") == {"Sitz": "5", "Knie": "3"}
+
+
+def test_briefing_shows_all_settings(client: TestClient, db: Session) -> None:
+    args: dict[str, object] = {"exercise": "SQ", "settings": {"Sitz": "4", "Knie": "3"}}
+    confirm(client, proposal(run(client, "propose_machine_settings", args)))
+    feedback.clear()
+
+    run(client, "training_briefing", {"focus": "Legday"})
+
+    assert any("Test Squat: 20 kg × 2 (setting: Sitz: 4, Knie: 3" in f for f in feedback)
 
 
 def test_briefing_tool_returns_the_overview(client: TestClient) -> None:

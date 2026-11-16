@@ -7,7 +7,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mgpa_backend.actions import GearSettingProposal, TrainingEntryProposal, TrainingLogProposal
+from mgpa_backend.actions import (
+    MachineSettingsProposal,
+    TrainingEntryProposal,
+    TrainingLogProposal,
+)
 from mgpa_backend.config import get_settings
 from mgpa_backend.models import Exercise
 from mgpa_backend.training.service import majority_focus, resolve_exercise, suggest_exercises
@@ -63,13 +67,28 @@ def build_training_proposal(
     )
 
 
-def build_gear_proposal(db: Session, exercise_name: str, setting: str) -> GearSettingProposal:
+def build_settings_proposal(
+    db: Session, exercise_name: str, changes: dict[str, str], replace: bool
+) -> MachineSettingsProposal:
+    """Merge the changed settings into the current ones (an empty value removes a setting).
+    With `replace`, the given settings become the complete new set."""
     exercise = _resolve(db, exercise_name)
-    return GearSettingProposal(
+    if not changes:
+        raise ValueError('No settings given, e.g. {"Sitz": "4"}.')
+    new = {} if replace else dict(exercise.settings)
+    for name, value in changes.items():
+        key, text = name.strip(), str(value).strip()
+        if not key:
+            continue
+        if text:
+            new[key] = text[:100]
+        else:
+            new.pop(key, None)
+    return MachineSettingsProposal(
         exercise_id=exercise.id,
         exercise=exercise.name,
-        old_setting=exercise.gear_setting,
-        new_setting=setting.strip() or None,
+        old_settings=dict(exercise.settings),
+        new_settings=new,
     )
 
 

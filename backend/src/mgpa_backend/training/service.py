@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
+from mgpa_backend.actions import format_settings
 from mgpa_backend.models import Exercise, TrainingEntry, TrainingSession
 
 
@@ -126,8 +127,8 @@ def training_overview(db: Session, focus: str) -> str:
         details = []
         if value and exercise.id not in done_last_time:
             details.append(f"from {value.date:%d.%m.%Y}, skipped last time")
-        if exercise.gear_setting:
-            details.append(f"setting: {exercise.gear_setting}")
+        if exercise.settings:
+            details.append(f"setting: {format_settings(exercise.settings)}")
         if exercise.caution:
             details.append(f"⚠️ {exercise.caution}")
         if exercise.default_sets != 3:
