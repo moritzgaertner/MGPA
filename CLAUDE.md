@@ -171,7 +171,16 @@ For every milestone:
   80/443; route by hostname). Free hostname for MGPA (e.g. sslip.io-style) — owner only uses it as
   a home-screen link. Before deploying, ask the owner for: `free -h; nproc; docker ps ...;
   ss -tlnp | grep ':80 |:443 '` output and SSH access. If RAM ≤ 2 GB: run only the Dagster daemon.
-- [ ] Training — in progress (owner: "code first", deployment after).
+- [x] Training — done (live-verified with the owner's data). Tables exercises (plan order, JSON
+  `settings` with several named values like Sitz/Knie/Fuß — JSON not JSONB to keep key order,
+  cautions, aliases, active flag), training_sessions, training_entries (weight × sets). Importer
+  `python -m mgpa_backend.training.importer <CONTEXT.md> <xlsx>` reads the owner's files (no personal
+  data in the repo); already run locally (21 exercises, 24 sessions) — at deployment, move the local
+  data to the server (pg_dump/restore), don't re-import. Agent tools: training_briefing ("heute
+  Beine"), exercise_history, propose_training_log (aliases, default sets, merges into the same
+  day+focus session), propose_machine_settings (merge, "" removes). /training page: Plan (edit
+  settings), Sessions (delete), Progress (Chakra charts).
+- [ ] Nutrition + body weight + habits — next.
 - [ ] At the very end: an interview course covering all building blocks of the codebase (owner
   request 2026-11-16).
 
