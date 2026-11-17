@@ -4,6 +4,7 @@ import { api, unwrap } from './client'
 import { conversationKeys } from './conversations'
 import { noteKeys } from './notes'
 import type { components } from './schema'
+import { trackingKeys } from './tracking'
 import { trainingKeys } from './training'
 
 export type Action = components['schemas']['ActionRead']
@@ -23,6 +24,7 @@ export function useDecideAction() {
       void queryClient.invalidateQueries({ queryKey: conversationKeys.all })
       void queryClient.invalidateQueries({ queryKey: noteKeys.all })
       void queryClient.invalidateQueries({ queryKey: trainingKeys.all })
+      void queryClient.invalidateQueries({ queryKey: trackingKeys.all })
     },
   })
 }

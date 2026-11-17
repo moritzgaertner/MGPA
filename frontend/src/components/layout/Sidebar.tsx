@@ -1,6 +1,6 @@
 import { Box, Button, Flex, HStack, IconButton, Stack, Text } from '@chakra-ui/react'
 import { Link, type LinkProps, useNavigate } from '@tanstack/react-router'
-import { LuBookOpen, LuDumbbell, LuLogOut, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
+import { LuActivity, LuBookOpen, LuDumbbell, LuLogOut, LuMessageSquare, LuPlus, LuStickyNote } from 'react-icons/lu'
 
 import { useLogout } from '@/api/auth'
 import { ColorModeButton } from '@/components/ui/color-mode'
@@ -11,6 +11,7 @@ import { ConversationList } from './ConversationList'
 const NAV_ITEMS: { label: string; to: LinkProps['to']; icon: typeof LuMessageSquare }[] = [
   { label: 'Chat', to: '/chat', icon: LuMessageSquare },
   { label: 'Training', to: '/training', icon: LuDumbbell },
+  { label: 'Tracking', to: '/tracking', icon: LuActivity },
   { label: 'Notes', to: '/notes', icon: LuStickyNote },
   { label: 'Knowledge', to: '/knowledge', icon: LuBookOpen },
 ]

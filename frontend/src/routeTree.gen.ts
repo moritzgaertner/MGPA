@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as TrackingRouteImport } from './routes/tracking'
 import { Route as TrainingRouteImport } from './routes/training'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat/$conversationId'
@@ -37,6 +38,11 @@ const NotesRoute = NotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrackingRoute = TrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrainingRoute = TrainingRouteImport.update({
   id: '/training',
   path: '/training',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof KnowledgeRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/tracking': typeof TrackingRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof KnowledgeRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/tracking': typeof TrackingRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat': typeof ChatIndexRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/knowledge': typeof KnowledgeRoute
   '/login': typeof LoginRoute
   '/notes': typeof NotesRoute
+  '/tracking': typeof TrackingRoute
   '/training': typeof TrainingRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/chat/': typeof ChatIndexRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/login'
     | '/notes'
+    | '/tracking'
     | '/training'
     | '/chat/$conversationId'
     | '/chat/'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/login'
     | '/notes'
+    | '/tracking'
     | '/training'
     | '/chat/$conversationId'
     | '/chat'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/login'
     | '/notes'
+    | '/tracking'
     | '/training'
     | '/chat/$conversationId'
     | '/chat/'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   KnowledgeRoute: typeof KnowledgeRoute
   LoginRoute: typeof LoginRoute
   NotesRoute: typeof NotesRoute
+  TrackingRoute: typeof TrackingRoute
   TrainingRoute: typeof TrainingRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tracking': {
+      id: '/tracking'
+      path: '/tracking'
+      fullPath: '/tracking'
+      preLoaderRoute: typeof TrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/training': {
       id: '/training'
       path: '/training'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeRoute: KnowledgeRoute,
   LoginRoute: LoginRoute,
   NotesRoute: NotesRoute,
+  TrackingRoute: TrackingRoute,
   TrainingRoute: TrainingRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
   ChatIndexRoute: ChatIndexRoute,

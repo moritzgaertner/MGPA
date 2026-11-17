@@ -47,6 +47,25 @@ function PayloadPreview({ action }: ActionCardProps) {
       </Stack>
     )
   }
+  if (action.kind === 'log_weight') {
+    return typeof payload.previous === 'number' ? (
+      <Text fontSize="sm" color="fg.muted">
+        Replaces {payload.previous.toLocaleString('de-DE')} kg already saved for that day.
+      </Text>
+    ) : null
+  }
+  if (action.kind === 'check_habits') {
+    const habits = (payload.habits ?? []) as { name: string }[]
+    return (
+      <HStack gap="1.5" wrap="wrap">
+        {habits.map((habit) => (
+          <Badge key={habit.name} colorPalette="teal" variant="subtle">
+            <LuCheck /> {habit.name}
+          </Badge>
+        ))}
+      </HStack>
+    )
+  }
   return null
 }
 
