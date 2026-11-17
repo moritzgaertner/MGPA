@@ -1,8 +1,10 @@
 """The chat agent: Claude via Pydantic AI, plus conversion of stored messages into its history."""
 
+import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import Any
 
 from anthropic import AsyncAnthropic
 from fastapi.concurrency import run_in_threadpool
@@ -109,6 +111,15 @@ class ChatContext:
     conversation_id: int | None = None
     # Proposals created during this run, not yet streamed to the client.
     new_proposals: list[Action] = field(default_factory=list)
+    # Claude may call several tools at once (e.g. weight + habits), and Pydantic AI runs them
+    # concurrently. A SQLAlchemy session must not be used by two threads at the same time, so
+    # all DB work of one chat turn goes through this lock, one tool after the other.
+    db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+    async def in_db[T](self, fn: Callable[..., T], *args: Any) -> T:
+        """Run a blocking DB function in a worker thread, never two at once for this turn."""
+        async with self.db_lock:
+            return await run_in_threadpool(fn, *args)
 
 
 def render_pinned_notes(notes: Sequence[PinnedNote]) -> str:
@@ -167,7 +178,8 @@ def get_agent() -> Agent[ChatContext, str]:
         Args:
             query: What to look for, phrased as a short question or keywords.
         """
-        return await run_knowledge_search(ctx.deps.search_knowledge, query)
+        async with ctx.deps.db_lock:  # the search reads chunks with the request's DB session
+            return await run_knowledge_search(ctx.deps.search_knowledge, query)
 
     @agent.tool
     async def propose_note(
@@ -195,7 +207,7 @@ def get_agent() -> Agent[ChatContext, str]:
         """
         if ctx.deps.db is None:
             return "Notes are not available."
-        return await run_in_threadpool(search_notes, ctx.deps.db, query)
+        return await ctx.deps.in_db(search_notes, ctx.deps.db, query)
 
     @agent.instructions
     def today_instructions() -> str:
@@ -210,7 +222,7 @@ def get_agent() -> Agent[ChatContext, str]:
         """
         if ctx.deps.db is None:
             return "Training data is not available."
-        return await run_in_threadpool(training_service.training_overview, ctx.deps.db, focus)
+        return await ctx.deps.in_db(training_service.training_overview, ctx.deps.db, focus)
 
     @agent.tool
     async def exercise_history(ctx: RunContext[ChatContext], exercise: str) -> str:
@@ -222,11 +234,11 @@ def get_agent() -> Agent[ChatContext, str]:
         db = ctx.deps.db
         if db is None:
             return "Training data is not available."
-        found = await run_in_threadpool(training_service.resolve_exercise, db, exercise)
+        found = await ctx.deps.in_db(training_service.resolve_exercise, db, exercise)
         if found is None:
-            suggestions = await run_in_threadpool(training_service.suggest_exercises, db, exercise)
+            suggestions = await ctx.deps.in_db(training_service.suggest_exercises, db, exercise)
             raise ModelRetry(f"Unknown exercise '{exercise}'. Did you mean: {suggestions}?")
-        return await run_in_threadpool(training_service.exercise_history, db, found)
+        return await ctx.deps.in_db(training_service.exercise_history, db, found)
 
     @agent.tool
     async def propose_training_log(
@@ -247,7 +259,7 @@ def get_agent() -> Agent[ChatContext, str]:
             return "Saving is not available in this context."
         try:
             day = training_tools.parse_day(date)
-            payload = await run_in_threadpool(
+            payload = await ctx.deps.in_db(
                 training_tools.build_training_proposal, db, entries, day, notes
             )
         except (ValueError, ValidationError) as error:  # incl. UnknownExerciseError
@@ -274,7 +286,7 @@ def get_agent() -> Agent[ChatContext, str]:
         if db is None:
             return "Saving is not available in this context."
         try:
-            payload = await run_in_threadpool(
+            payload = await ctx.deps.in_db(
                 training_tools.build_settings_proposal, db, exercise, settings, replace
             )
         except (ValueError, ValidationError) as error:
@@ -286,7 +298,7 @@ def get_agent() -> Agent[ChatContext, str]:
         """Body weight trend (latest, 7-day averages) and this week's habit progress vs. goals."""
         if ctx.deps.db is None:
             return "Tracking data is not available."
-        return await run_in_threadpool(
+        return await ctx.deps.in_db(
             tracking_service.tracking_overview, ctx.deps.db, training_tools.today()
         )
 
@@ -305,7 +317,7 @@ def get_agent() -> Agent[ChatContext, str]:
             return "Saving is not available in this context."
         try:
             day = training_tools.parse_day(date)
-            payload = await run_in_threadpool(tracking_tools.build_weight_proposal, db, weight, day)
+            payload = await ctx.deps.in_db(tracking_tools.build_weight_proposal, db, weight, day)
         except (ValueError, ValidationError) as error:
             raise ModelRetry(str(error)) from error
         return await propose_action(ctx.deps, "log_weight", payload)
@@ -325,7 +337,7 @@ def get_agent() -> Agent[ChatContext, str]:
             return "Saving is not available in this context."
         try:
             day = training_tools.parse_day(date)
-            payload = await run_in_threadpool(tracking_tools.build_habit_proposal, db, habits, day)
+            payload = await ctx.deps.in_db(tracking_tools.build_habit_proposal, db, habits, day)
         except (ValueError, ValidationError) as error:
             raise ModelRetry(str(error)) from error
         return await propose_action(ctx.deps, "check_habits", payload)
@@ -337,7 +349,7 @@ async def propose_action(deps: ChatContext, kind: str, payload: BaseModel) -> st
     """Store a proposal and queue it for the client. Returns the tool result for Claude."""
     if deps.db is None or deps.conversation_id is None:
         return "Saving is not available in this context."
-    action = await run_in_threadpool(actions.propose, deps.db, deps.conversation_id, kind, payload)
+    action = await deps.in_db(actions.propose, deps.db, deps.conversation_id, kind, payload)
     deps.new_proposals.append(action)
     return (
         f"Proposal #{action.id} ({action.label}) is shown to the user. "

@@ -1,16 +1,21 @@
 """Body weight and habits: service, REST endpoints, importer and chat proposals."""
 
-from collections.abc import Iterator
+import json
+from collections.abc import AsyncIterator, Iterator
 from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic_ai import ModelMessage
+from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 from sqlalchemy.orm import Session
 
+from mgpa_backend.agent import get_agent
 from mgpa_backend.models import BodyWeight, HabitCheck, TrainingSession
 from mgpa_backend.tracking import service
 from mgpa_backend.tracking.importer import import_habits
 from mgpa_backend.training.tools import today
+from tests.test_chat_api import parse_sse
 from tests.test_training_tools import feedback, proposal, run
 
 HABITS_JSON = {
@@ -161,6 +166,31 @@ def test_habit_checkin_resolves_names_and_retries_unknown_ones(
     client.post(f"/actions/{action['id']}/confirm")
     db.expire_all()
     assert db.query(HabitCheck).filter_by(date=date(2026, 6, 1)).count() == 3
+
+
+def test_parallel_tool_calls_share_the_db_session_safely(client: TestClient) -> None:
+    """Regression: Claude called propose_weight and propose_habit_checkin in ONE response; both
+    ran concurrently on the same SQLAlchemy session -> "This transaction is closed"."""
+
+    async def stream(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        if len(messages) > 1:
+            yield "Ready to confirm."
+            return
+        yield {
+            0: DeltaToolCall(name="propose_weight", json_args=json.dumps({"weight": 82.4})),
+            1: DeltaToolCall(
+                name="propose_habit_checkin", json_args=json.dumps({"habits": ["Lesen", "Yoga"]})
+            ),
+        }
+
+    with get_agent().override(model=FunctionModel(stream_function=stream)):
+        events = parse_sse(client.post("/chat", json={"message": "82,4 und Lesen, Yoga"}).text)
+
+    kinds = sorted(data["action"]["kind"] for name, data in events if name == "proposal")
+    assert kinds == ["check_habits", "log_weight"]
+    assert not [data for name, data in events if name == "error"]
 
 
 def test_gym_cannot_be_ticked_from_chat(client: TestClient) -> None:
