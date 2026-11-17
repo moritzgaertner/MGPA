@@ -196,3 +196,78 @@ The agent has no direct write access: its write tools only create proposals, whi
 cards and confirms or discards. On confirm, the backend re-validates the payload and executes it in a
 single transaction — deterministic code, no second model call — and an action can be confirmed only
 once.
+
+## Training — first domain module
+
+**Built:** tables `exercises` (plan order, named machine settings, aliases, active flag),
+`training_sessions`, `training_entries` (weight × sets); one-off importer for the old Excel +
+CONTEXT.md; agent tools `training_briefing`, `exercise_history`, `propose_training_log`,
+`propose_machine_settings`; `/training` page with plan, sessions and progress charts.
+
+**Learned**
+- *Domain module blueprint* — models + service (pure logic) + tool builders (validate model input
+  into proposals) + router (UI) + page. Weight/habits and later applications follow the same shape.
+- *Let code resolve, not the LLM* — abbreviations ("BP") are matched in Python (normalize + aliases,
+  difflib suggestions on a miss → `ModelRetry`), so the model can't invent exercises.
+- *JSON vs JSONB* — JSONB re-sorts object keys; machine settings must keep "Sitz, Knie, Fuß" order,
+  so `settings` and the action payload use plain JSON.
+- *Data migrations* — changing a column's shape needs a migration that converts existing rows, not
+  just the schema change Alembic autogenerates.
+- *Personal data stays out of git* — the importer reads the owner's files at run time.
+
+**Interview: "How did you integrate an existing workflow into the agent?"**
+I modelled the domain in Postgres, imported the old Excel once, and exposed it to Claude as a few
+narrow tools: read tools return compact text, write tools only create proposals. Fuzzy matching of
+abbreviations happens in deterministic code, and on a miss the tool returns suggestions so the model
+retries instead of guessing.
+
+## Login — single-user auth
+
+**Built:** username + argon2 password hash in `.env` (set by a CLI, never typed into chat), signed
+session cookie (HttpOnly, SameSite=Lax, Secure outside dev, 30 days), all routers except `/auth` and
+`/health` behind `require_user`, login lockout after 5 failures / 15 min per IP, frontend guard that
+redirects to `/login?redirect=…`.
+
+**Learned**
+- *Sessions vs JWT* — one user, one browser: a server-signed cookie is simpler and can't be read by
+  JavaScript (XSS); JWTs mostly pay off with many services or third-party clients.
+- *Constant-time checks* — compare usernames with `secrets.compare_digest` and verify a dummy hash
+  for unknown users, so response time doesn't reveal which part was wrong.
+- *SameSite=Lax* blocks cross-site POSTs carrying the cookie (CSRF) without extra tokens.
+- *Behind a proxy* the client IP is Caddy's unless uvicorn trusts `X-Forwarded-For` — matters for
+  the lockout.
+- *Open redirects* — `?redirect=` only accepts same-site paths.
+
+**Interview: "How did you secure a single-user app on the internet?"**
+HTTPS via Caddy, a password stored only as an argon2 hash in the server's environment, and a signed
+HttpOnly session cookie with SameSite=Lax; every API route depends on a `require_user` check except
+login and health. Repeated failures lock the IP out for 15 minutes, which makes online guessing
+impractical.
+
+## Body weight & habits
+
+**Built:** `body_weights` (one row per day, re-entry replaces), `habits` (weekly goal, source
+`manual` or `training`), `habit_checks` (row = ticked); chat tools `propose_weight`,
+`propose_habit_checkin`, `tracking_overview`; `/tracking` page with a week grid (optimistic ticks),
+weigh-in field, 7-day trend, chart and weekly averages (SQL `date_trunc('week')`); habits.json
+importer.
+
+**Learned**
+- *Derived instead of duplicated* — "Gym" is not ticked; it is computed from training sessions, so
+  the two can never disagree.
+- *Presence as data* — a habit check is just a row; unticking deletes it. A unique constraint
+  `(habit_id, date)` makes ticking idempotent.
+- *Concurrency bug found live* — Claude called two write tools in one response; Pydantic AI runs them
+  in parallel, and both used one SQLAlchemy session from two threads ("This transaction is closed").
+  Fix: a per-turn `asyncio.Lock` around all DB work of the tools; a regression test with a fake
+  model making two parallel tool calls reproduces it.
+- *Optimistic UI* — the checkbox flips before the server answers and rolls back on error; feels
+  instant on a phone.
+- *React detail* — `mutate(…, { onSuccess })` callbacks don't fire if the component unmounts first
+  (here: a `key` that changed with the fetched data). Put lasting side effects in the hook.
+
+**Interview: "Tell me about a bug you found in production-like testing."**
+In an end-to-end test, "weight 82.4 and habits reading, vitamins" failed: Claude issued two tool
+calls at once, the framework executed them concurrently, and both used the same database session
+from different threads. I reproduced it with a fake model in a test, then serialized database access
+per chat turn with an asyncio lock — the test fails without the fix and passes with it.

@@ -190,7 +190,14 @@ For every milestone:
   proxy headers (`--proxy-headers --forwarded-allow-ips`) so the IP is the real client, not Caddy.
   Frontend: root `beforeLoad` checks /auth/me → /login?redirect=…; any 401 redirects to login.
   The backend no longer starts without these settings — the owner must run the command once.
-- [ ] Nutrition — postponed by the owner (2026-11-16). Body weight + habits — not started.
+- [x] Body weight + habits — done (live-verified, 2026-11-17). `tracking/` package (service, tools,
+  importer `python -m mgpa_backend.tracking.importer <habits.json>`, already run locally: 7 habits).
+  Tables body_weights (one per day, re-entry replaces), habits (weekly_goal, source manual|training —
+  "Gym" is derived from training sessions, never ticked), habit_checks (row = ticked). Chat tools
+  propose_weight, propose_habit_checkin, tracking_overview; /tracking page. All DB work of a chat
+  turn goes through `ChatContext.in_db` (per-turn asyncio lock) — Claude may call tools in parallel
+  and a SQLAlchemy session is not thread-safe. Use it in every new tool.
+- [ ] Nutrition — postponed by the owner (2026-11-16).
 - [ ] At the very end: an interview course covering all building blocks of the codebase (owner
   request 2026-11-16).
 
