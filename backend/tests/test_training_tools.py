@@ -32,7 +32,7 @@ def model_calling(
         replies = [str(p.content) for p in parts if isinstance(p, ToolReturnPart | RetryPromptPart)]
         feedback.extend(replies)
         attempt = sum(1 for m in messages if isinstance(m, ModelRequest)) - 1
-        if replies and not any("Unknown exercise" in r or "Invalid" in r for r in replies):
+        if replies and not any("Unknown " in r or "Invalid" in r for r in replies):
             yield "Done."
             return
         args = argument_sets[min(attempt, len(argument_sets) - 1)]

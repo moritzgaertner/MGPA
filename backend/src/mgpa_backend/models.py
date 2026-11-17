@@ -318,3 +318,49 @@ class TrainingEntry(Base):
 
     session: Mapped[TrainingSession] = relationship(back_populates="entries")
     exercise: Mapped[Exercise] = relationship()
+
+
+# --- Body weight & habits -----------------------------------------------------------------------
+
+
+class BodyWeight(TimestampMixin, Base):
+    """One morning weigh-in. One row per day: a second entry for the same day replaces it."""
+
+    __tablename__ = "body_weights"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[date] = mapped_column(Date, unique=True)
+    weight: Mapped[float] = mapped_column(Numeric(5, 2, asdecimal=False))  # kg
+
+
+class HabitSource(StrEnum):
+    MANUAL = "manual"  # ticked off by the user (chat or UI)
+    TRAINING = "training"  # derived: a day counts if a training session exists ("Gym")
+
+
+class Habit(TimestampMixin, Base):
+    """A habit with a weekly goal, e.g. "Lesen" 5× per week."""
+
+    __tablename__ = "habits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    weekly_goal: Mapped[int] = mapped_column(default=7, server_default="7")  # days per week
+    position: Mapped[int] = mapped_column(default=0, server_default="0")
+    # Plain string like Action.kind: valid values live in code (HabitSource), no DB enum.
+    source: Mapped[str] = mapped_column(
+        String(20), default=HabitSource.MANUAL, server_default=HabitSource.MANUAL.value
+    )
+    is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
+
+
+class HabitCheck(Base):
+    """ "Habit done on this day". The row's existence is the tick; unticking deletes it."""
+
+    __tablename__ = "habit_checks"
+    __table_args__ = (UniqueConstraint("habit_id", "date"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    habit_id: Mapped[int] = mapped_column(ForeignKey("habits.id", ondelete="CASCADE"), index=True)
+    date: Mapped[date] = mapped_column(Date, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

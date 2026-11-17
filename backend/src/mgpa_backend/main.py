@@ -12,7 +12,16 @@ from mgpa_backend.auth import require_user
 from mgpa_backend.config import get_settings
 from mgpa_backend.db import DbSession
 from mgpa_backend.observability import setup_tracing, shutdown_tracing
-from mgpa_backend.routers import actions, auth, chat, conversations, documents, notes, training
+from mgpa_backend.routers import (
+    actions,
+    auth,
+    chat,
+    conversations,
+    documents,
+    notes,
+    tracking,
+    training,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -48,6 +57,7 @@ app.include_router(notes.router, dependencies=protected)
 app.include_router(documents.router, dependencies=protected)
 app.include_router(actions.router, dependencies=protected)
 app.include_router(training.router, dependencies=protected)
+app.include_router(tracking.router, dependencies=protected)
 
 
 @app.get("/health")

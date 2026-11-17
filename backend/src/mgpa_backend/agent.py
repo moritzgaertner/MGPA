@@ -28,6 +28,8 @@ from mgpa_backend.config import get_settings
 from mgpa_backend.knowledge.embeddings import EmbeddingsNotConfiguredError
 from mgpa_backend.knowledge.search import SearchHit
 from mgpa_backend.models import Action, Message, MessageRole, Note
+from mgpa_backend.tracking import service as tracking_service
+from mgpa_backend.tracking import tools as tracking_tools
 from mgpa_backend.training import service as training_service
 from mgpa_backend.training import tools as training_tools
 from mgpa_backend.training.tools import TrainingEntryInput
@@ -71,7 +73,12 @@ with `propose_training_log` (date defaults to today; resolve "gestern" etc. your
 ALL machine settings (e.g. "Sitz 4 · Knie 3"), plus warnings — as a compact list. For progress \
 of one exercise use `exercise_history`. Machines can have several named settings (e.g. \
 Beinbeuger: Sitz, Knie, Fuß); record or change them with `propose_machine_settings`, passing \
-only the settings the user mentioned.\
+only the settings the user mentioned.
+
+Body weight and habits: "Gewicht 82,4" / "82.4 kg heute" -> `propose_weight`. "Habits: Lesen, \
+Yoga" / "heute Vitamine und Mails erledigt" -> `propose_habit_checkin` with all named habits in \
+one call. "Gym" is counted automatically from logged workouts; never tick it. For "wie läuft \
+meine Woche", weight trend or habit progress use `tracking_overview`.\
 """
 
 # Signature of the per-request search function the chat endpoint provides (see ChatContext).
@@ -273,6 +280,55 @@ def get_agent() -> Agent[ChatContext, str]:
         except (ValueError, ValidationError) as error:
             raise ModelRetry(str(error)) from error
         return await propose_action(ctx.deps, "update_machine_settings", payload)
+
+    @agent.tool
+    async def tracking_overview(ctx: RunContext[ChatContext]) -> str:
+        """Body weight trend (latest, 7-day averages) and this week's habit progress vs. goals."""
+        if ctx.deps.db is None:
+            return "Tracking data is not available."
+        return await run_in_threadpool(
+            tracking_service.tracking_overview, ctx.deps.db, training_tools.today()
+        )
+
+    @agent.tool
+    async def propose_weight(
+        ctx: RunContext[ChatContext], weight: float, date: str | None = None
+    ) -> str:
+        """Propose logging body weight. Nothing is saved until the user confirms it in the app.
+
+        Args:
+            weight: Body weight in kg, e.g. 82.4.
+            date: YYYY-MM-DD; omit for today.
+        """
+        db = ctx.deps.db
+        if db is None:
+            return "Saving is not available in this context."
+        try:
+            day = training_tools.parse_day(date)
+            payload = await run_in_threadpool(tracking_tools.build_weight_proposal, db, weight, day)
+        except (ValueError, ValidationError) as error:
+            raise ModelRetry(str(error)) from error
+        return await propose_action(ctx.deps, "log_weight", payload)
+
+    @agent.tool
+    async def propose_habit_checkin(
+        ctx: RunContext[ChatContext], habits: list[str], date: str | None = None
+    ) -> str:
+        """Propose ticking off habits as done. Nothing is saved until the user confirms it.
+
+        Args:
+            habits: Habit names as the user wrote them, e.g. ["Lesen", "Yoga"].
+            date: YYYY-MM-DD; omit for today.
+        """
+        db = ctx.deps.db
+        if db is None:
+            return "Saving is not available in this context."
+        try:
+            day = training_tools.parse_day(date)
+            payload = await run_in_threadpool(tracking_tools.build_habit_proposal, db, habits, day)
+        except (ValueError, ValidationError) as error:
+            raise ModelRetry(str(error)) from error
+        return await propose_action(ctx.deps, "check_habits", payload)
 
     return agent
 

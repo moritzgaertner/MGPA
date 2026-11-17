@@ -20,10 +20,12 @@ from mgpa_backend.models import (
     Action,
     ActionStatus,
     Exercise,
+    Habit,
     Note,
     TrainingEntry,
     TrainingSession,
 )
+from mgpa_backend.tracking import service as tracking
 
 
 class ActionConflictError(Exception):
@@ -61,6 +63,22 @@ class MachineSettingsProposal(BaseModel):
     exercise: str
     old_settings: dict[str, str]
     new_settings: dict[str, str] = Field(max_length=20)
+
+
+class WeightProposal(BaseModel):
+    date: date
+    weight: float = Field(ge=20, le=400)  # kg; bounds catch typos like 824 instead of 82,4
+    previous: float | None = None  # value already stored for that day (replaced on confirm)
+
+
+class HabitRef(BaseModel):
+    habit_id: int
+    name: str
+
+
+class HabitCheckinProposal(BaseModel):
+    date: date
+    habits: list[HabitRef] = Field(min_length=1, max_length=30)
 
 
 # --- Executors: (db, payload) -> (id of the created row, human-readable result) ----------------
@@ -120,6 +138,18 @@ def _update_machine_settings(db: Session, payload: MachineSettingsProposal) -> t
     return exercise.id, f"Settings for {exercise.name}: {summary}"
 
 
+def _log_weight(db: Session, payload: WeightProposal) -> tuple[int, str]:
+    entry = tracking.set_weight(db, payload.date, payload.weight)
+    return entry.id, f"Weight {payload.weight:g} kg on {payload.date:%d.%m.%Y} saved"
+
+
+def _check_habits(db: Session, payload: HabitCheckinProposal) -> tuple[int, str]:
+    for ref in payload.habits:
+        tracking.set_check(db, db.get_one(Habit, ref.habit_id), payload.date, done=True)
+    names = ", ".join(ref.name for ref in payload.habits)
+    return payload.habits[0].habit_id, f"Done on {payload.date:%d.%m.%Y}: {names}"
+
+
 @dataclass(frozen=True)
 class ActionType:
     payload_model: type[BaseModel]
@@ -142,6 +172,18 @@ REGISTRY: dict[str, ActionType] = {
         payload_model=MachineSettingsProposal,
         label=lambda p: f"Change settings for {p.exercise}",
         execute=_update_machine_settings,
+    ),
+    "log_weight": ActionType(
+        payload_model=WeightProposal,
+        label=lambda p: f"Log weight {p.weight:g} kg · {p.date:%d.%m.%Y}",
+        execute=_log_weight,
+    ),
+    "check_habits": ActionType(
+        payload_model=HabitCheckinProposal,
+        label=lambda p: (
+            f"Tick off {len(p.habits)} habit{'s' if len(p.habits) > 1 else ''} · {p.date:%d.%m.%Y}"
+        ),
+        execute=_check_habits,
     ),
 }
 

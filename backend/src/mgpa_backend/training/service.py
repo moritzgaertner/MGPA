@@ -1,7 +1,6 @@
 """Training queries and text for the agent: resolve exercise names, last values, briefings."""
 
 import difflib
-import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date
@@ -12,11 +11,7 @@ from sqlalchemy.orm import Session
 
 from mgpa_backend.actions import format_settings
 from mgpa_backend.models import Exercise, TrainingEntry, TrainingSession
-
-
-def normalize(text: str) -> str:
-    """Case-, space- and punctuation-insensitive key: "Rev. Butterfly" == "rev butterfly"."""
-    return re.sub(r"[^\w]+", " ", text.casefold()).strip()
+from mgpa_backend.textutil import normalize
 
 
 def _lookup_table(db: Session) -> dict[str, Exercise]:
