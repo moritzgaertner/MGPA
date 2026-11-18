@@ -1,0 +1,55 @@
+# Deploy to the Hetzner server after CI passed on main (or manually via "Run workflow").
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY      private key of a deploy-only SSH key (see docs/DEPLOYMENT.md)
+#   DEPLOY_KNOWN_HOSTS  output of: ssh-keyscan -t ed25519 2.31.156.148
+# Without them the job is skipped (not failed), so a fresh clone doesn't send error mails.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "DEPLOY_SSH_KEY not set - skipping deployment."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          # The commit CI tested, not whatever main points to now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up SSH
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        if: steps.secrets.outputs.ready == 'true'
+        run: SSH_OPTS="-i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes" ./infra/deploy.sh
