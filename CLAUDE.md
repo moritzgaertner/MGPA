@@ -168,11 +168,20 @@ For every milestone:
   `POST /actions/{id}/confirm|reject` executes via `actions.REGISTRY` (payload model + executor),
   no LLM call on confirm; 409 on double decision. Tools: `propose_note`, `find_notes`.
   New action kinds (training, meals, weight) = add to REGISTRY + a `propose_*` tool.
-- [ ] Deployment — on the owner's EXISTING Hetzner server, which also hosts their "Wichtel" app
-  (rarely used, must keep running on its domain). Needs a shared reverse proxy (one process owns
-  80/443; route by hostname). Free hostname for MGPA (e.g. sslip.io-style) — owner only uses it as
-  a home-screen link. Before deploying, ask the owner for: `free -h; nproc; docker ps ...;
-  ss -tlnp | grep ':80 |:443 '` output and SSH access. If RAM ≤ 2 GB: run only the Dagster daemon.
+- [ ] Deployment — built and tested locally (2026-11-18), NOT yet live: the owner runs the steps in
+  `docs/DEPLOYMENT.md` (Claude has no SSH permission to the server). Server root@2.31.156.148
+  (2 vCPU, 3.7 GB RAM, 33 GB free). Wichtel lives in /opt/kirchstrasse16 with its own Caddy on
+  80/443 (repo `~/code/Wichteln`, NOT a git repo; its `deploy/deploy.sh` uses --remove-orphans).
+  MGPA = separate compose project in /opt/mgpa (`infra/compose.prod.yaml`: web/backend/pipelines/
+  postgres); only `web` joins the external network `edge` (alias mgpa-web); the Wichtel Caddyfile
+  got a block `mgpa.2-31-156-148.sslip.io → mgpa-web:80` and its Caddy joins `edge` (originals in
+  `Wichteln/deploy.backup-2026-11-18`). Order: MGPA deploy first (creates `edge`), then Wichtel.
+  Scripts: infra/server-env.sh (server .env from local, own DB password/session secret kept on
+  --force), infra/deploy.sh, infra/push-data.sh (pg_dump/restore + documents). PWA manifest +
+  icons done. `.github/workflows/deploy.yml` deploys after CI on main, skipped until secrets
+  DEPLOY_SSH_KEY + DEPLOY_KNOWN_HOSTS exist. Pending: go-live, then LEARNINGS entry.
+  Testing tip: never `source .env` in a shell that runs compose for another stack — shell env vars
+  win over `--env-file` in compose interpolation.
 - [x] Training — done (live-verified with the owner's data). Tables exercises (plan order, JSON
   `settings` with several named values like Sitz/Knie/Fuß — JSON not JSONB to keep key order,
   cautions, aliases, active flag), training_sessions, training_entries (weight × sets). Importer
