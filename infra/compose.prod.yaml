@@ -1,0 +1,80 @@
+# Production stack on the Hetzner server (/opt/mgpa), deployed with infra/deploy.sh.
+#
+#   Internet ─► shared Caddy (HTTPS, other project) ─► web:80 ─┬─ static frontend
+#                     network "edge"                           └─ /api ─► backend:8000
+#   backend ─┐
+#            ├─► postgres (internal network only, never exposed)
+#   pipelines┘   pipelines = Dagster daemon ingesting uploaded documents
+#
+# Only `web` joins the shared "edge" network; everything else stays private to this project.
+# Secrets come from /opt/mgpa/.env (created by infra/server-env.sh, never committed).
+name: mgpa
+
+x-app-env: &app-env
+  env_file: ../.env
+  environment:
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    APP_ENV: production
+    DOCUMENTS_DIR: /data/documents
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+    restart: unless-stopped
+    <<: *app-env
+    volumes:
+      - documents:/data/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pipelines:
+    build:
+      context: ..
+      dockerfile: infra/pipelines.Dockerfile
+    restart: unless-stopped
+    <<: *app-env
+    volumes:
+      - documents:/data/documents
+      - dagster_home:/dagster_home
+    depends_on:
+      backend:
+        condition: service_started  # the backend applies the migrations
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      default:
+      edge:
+        aliases: [mgpa-web]  # the shared Caddy forwards to mgpa-web:80
+
+volumes:
+  pgdata:
+  documents:
+  dagster_home:
+
+networks:
+  edge:
+    external: true  # created once by infra/deploy.sh: docker network create edge

@@ -1,0 +1,15 @@
+# Keep secrets, local data and build artefacts out of Docker images.
+.env
+.env.*
+.git
+data/
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/.dagster_home
+**/tests
+docs/
